@@ -53,8 +53,12 @@ css/style.css     mobile-first layout + control styling
 js/main.js        entry point + frame loop + overlay wiring
 js/input.js       floating joystick, action buttons, keyboard fallback
 js/entities.js    Player (move/attack/dodge) and Enemy (chaser)
-js/game.js        arena, spawning, collisions, rendering, HUD
+js/rooms.js       room generation + door geometry for the run
+js/game.js        arena, room progression, collisions, rendering, HUD
 ```
+
+Add `?debug` to the URL to expose the running game as `window.__game` in the
+console — handy for jumping rooms or inspecting state while tuning.
 
 All gameplay tuning lives in the `PLAYER` and `ENEMY` constant blocks in
 `js/entities.js` — speeds, cooldowns, damage, attack arc/range, dodge distance.
@@ -66,6 +70,7 @@ Tweak those first when adjusting game feel.
   health/death/restart, difficulty ramp. ✅
 - **Phase 2:** more enemy types (ranged, charger), enemy attack telegraphs,
   simple sound, screen shake / hit feedback.
-- **Phase 3:** multiple rooms / procedural arena layout, doors between rooms.
+- **Phase 3:** run structure — an endless chain of rooms, clear the enemy
+  quota to open a glowing door, small heal per room, difficulty ramps by depth. ✅
 - **Phase 4:** weapons & pickups, a real HUD, pause.
 - **Phase 5:** meta-progression — currency, unlocks, permadeath runs.

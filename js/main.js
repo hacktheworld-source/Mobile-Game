@@ -7,6 +7,7 @@ const canvas = document.getElementById("game");
 const root = document.getElementById("game-root");
 
 const hud = {
+  roomEl: document.getElementById("room"),
   scoreEl: document.getElementById("score"),
   healthFill: document.getElementById("health-fill"),
   attackBtn: document.getElementById("btn-attack"),
@@ -21,9 +22,12 @@ const overlayBtn = document.getElementById("overlay-btn");
 initInput(root);
 const game = new Game(canvas, hud);
 
-game.onGameOver = (score, seconds) => {
+// Debug handle for tuning/testing from the console: open with ?debug
+if (location.search.includes("debug")) window.__game = game;
+
+game.onGameOver = (kills, room) => {
   overlayTitle.textContent = "YOU DIED";
-  overlayBody.innerHTML = `Kills: <b>${score}</b> &nbsp;·&nbsp; Survived: <b>${seconds}s</b>`;
+  overlayBody.innerHTML = `Reached <b>Room ${room}</b> &nbsp;·&nbsp; <b>${kills}</b> kills`;
   overlayBtn.textContent = "RETRY";
   overlay.classList.remove("hidden");
 };

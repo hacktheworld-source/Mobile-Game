@@ -57,10 +57,19 @@ canvas#game {
   z-index: 5;
 }
 
-#score {
-  font-size: 28px;
+#room {
+  font-size: 26px;
   font-weight: 800;
-  letter-spacing: 1px;
+  letter-spacing: 2px;
+  color: var(--accent);
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.6);
+}
+
+.hud-sub {
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  color: var(--muted);
   text-shadow: 0 2px 8px rgba(0, 0, 0, 0.6);
 }
 
