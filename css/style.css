@@ -1,0 +1,225 @@
+:root {
+  --bg: #0e1016;
+  --ink: #e8ecf5;
+  --muted: #8a93a6;
+  --accent: #4dd6a1;
+  --attack: #ff6b6b;
+  --dodge: #5aa9ff;
+  --danger: #ff5470;
+}
+
+* {
+  box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  overflow: hidden;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  overscroll-behavior: none;
+  touch-action: none;
+}
+
+#game-root {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+canvas#game {
+  display: block;
+  width: 100%;
+  height: 100%;
+  touch-action: none;
+}
+
+/* ---------- HUD ---------- */
+#hud {
+  position: absolute;
+  top: calc(env(safe-area-inset-top, 0px) + 12px);
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  pointer-events: none;
+  z-index: 5;
+}
+
+#score {
+  font-size: 28px;
+  font-weight: 800;
+  letter-spacing: 1px;
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.6);
+}
+
+.hud-bar {
+  width: 180px;
+  height: 10px;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.12);
+  overflow: hidden;
+}
+
+.hud-bar-fill {
+  height: 100%;
+  width: 100%;
+  background: linear-gradient(90deg, var(--danger), var(--accent));
+  transition: width 0.12s linear;
+}
+
+/* ---------- Touch controls ---------- */
+#controls {
+  position: absolute;
+  inset: 0;
+  z-index: 4;
+  pointer-events: none;
+}
+
+.joystick {
+  position: absolute;
+  width: 120px;
+  height: 120px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.06);
+  border: 2px solid rgba(255, 255, 255, 0.14);
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+}
+
+.joystick-knob {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 54px;
+  height: 54px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.22);
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  transform: translate(-50%, -50%);
+}
+
+.hidden {
+  display: none;
+}
+
+#buttons {
+  position: absolute;
+  right: calc(env(safe-area-inset-right, 0px) + 26px);
+  bottom: calc(env(safe-area-inset-bottom, 0px) + 40px);
+  display: flex;
+  align-items: flex-end;
+  gap: 18px;
+  pointer-events: none;
+}
+
+.action-btn {
+  pointer-events: auto;
+  border: none;
+  border-radius: 50%;
+  color: var(--ink);
+  font-weight: 800;
+  font-size: 15px;
+  letter-spacing: 0.5px;
+  touch-action: none;
+  transition: transform 0.06s ease, filter 0.06s ease;
+}
+
+.action-btn:active {
+  transform: scale(0.92);
+  filter: brightness(1.25);
+}
+
+.action-btn.attack {
+  width: 92px;
+  height: 92px;
+  background: radial-gradient(circle at 35% 30%, #ff9a9a, var(--attack));
+  box-shadow: 0 6px 18px rgba(255, 107, 107, 0.35);
+}
+
+.action-btn.dodge {
+  width: 72px;
+  height: 72px;
+  margin-bottom: 14px;
+  background: radial-gradient(circle at 35% 30%, #a7d0ff, var(--dodge));
+  box-shadow: 0 6px 18px rgba(90, 169, 255, 0.35);
+}
+
+.action-btn.cooling {
+  filter: grayscale(0.7) brightness(0.7);
+}
+
+/* ---------- Overlays ---------- */
+.overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(8, 9, 14, 0.82);
+  backdrop-filter: blur(3px);
+  padding: 24px;
+}
+
+.overlay.hidden {
+  display: none;
+}
+
+.overlay-card {
+  max-width: 420px;
+  text-align: center;
+}
+
+.overlay-card h1 {
+  font-size: 44px;
+  margin: 0 0 14px;
+  letter-spacing: 3px;
+  color: var(--accent);
+}
+
+.overlay-card p {
+  color: var(--ink);
+  line-height: 1.5;
+  font-size: 16px;
+  margin: 0 0 12px;
+}
+
+.overlay-hint {
+  color: var(--muted) !important;
+  font-size: 13px !important;
+}
+
+.start-btn {
+  margin-top: 16px;
+  padding: 14px 38px;
+  font-size: 18px;
+  font-weight: 800;
+  letter-spacing: 1px;
+  color: #0e1016;
+  background: var(--accent);
+  border: none;
+  border-radius: 999px;
+  pointer-events: auto;
+  cursor: pointer;
+}
+
+.start-btn:active {
+  transform: scale(0.96);
+}
+
+/* Hide on-screen buttons when no touch support (desktop) */
+body.no-touch #buttons {
+  display: none;
+}

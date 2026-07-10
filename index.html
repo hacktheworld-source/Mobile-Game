@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover"
+  />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="theme-color" content="#0e1016" />
+  <title>Arena Prototype</title>
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+  <div id="game-root">
+    <canvas id="game"></canvas>
+
+    <!-- HUD -->
+    <div id="hud">
+      <div class="hud-item" id="score">0</div>
+      <div class="hud-bar" aria-label="health">
+        <div class="hud-bar-fill" id="health-fill"></div>
+      </div>
+    </div>
+
+    <!-- Touch controls (hidden on devices with no touch) -->
+    <div id="controls">
+      <!-- The joystick base/knob get positioned dynamically -->
+      <div id="joystick" class="joystick hidden">
+        <div class="joystick-knob"></div>
+      </div>
+      <div id="buttons">
+        <button id="btn-dodge" class="action-btn dodge" aria-label="Dodge">DODGE</button>
+        <button id="btn-attack" class="action-btn attack" aria-label="Attack">ATK</button>
+      </div>
+    </div>
+
+    <!-- Overlays -->
+    <div id="overlay" class="overlay">
+      <div class="overlay-card">
+        <h1 id="overlay-title">ARENA</h1>
+        <p id="overlay-body">
+          Move with the left thumb. Tap <b>ATK</b> to swing, <b>DODGE</b> to roll
+          (brief invincibility). Survive.
+        </p>
+        <p class="overlay-hint" id="overlay-desktop-hint">
+          Desktop: <b>WASD</b> move · <b>J</b> / Space attack · <b>K</b> / Shift dodge
+        </p>
+        <button id="overlay-btn" class="start-btn">START</button>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="js/main.js"></script>
+</body>
+</html>
