@@ -6,9 +6,9 @@ export const PLAYER = {
   speed: 230,
   maxHealth: 100,
   // Attack
-  attackCooldown: 0.42,
+  attackCooldown: 0.3,
   attackDuration: 0.18, // how long the swing arc is "live" / drawn
-  attackRange: 62,
+  attackRange: 72,
   attackArc: Math.PI * 0.6, // ~108° cone in front of facing
   attackDamage: 40,
   // Dodge roll
@@ -125,7 +125,7 @@ export class Player {
 
 export const ENEMY = {
   radius: 15,
-  speed: 115,
+  speed: 92,
   maxHealth: 100,
   contactDamage: 10,
   hitInterval: 0.55, // min seconds between damage ticks on the player
