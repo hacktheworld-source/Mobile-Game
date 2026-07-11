@@ -9,7 +9,8 @@
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="mobile-web-app-capable" content="yes" />
   <meta name="theme-color" content="#0e1016" />
-  <title>Arena Prototype</title>
+  <title>Emberfall</title>
+  <link rel="icon" href="data:," />
   <link rel="stylesheet" href="css/style.css" />
 </head>
 <body>
@@ -18,7 +19,7 @@
 
     <!-- HUD -->
     <div id="hud">
-      <div class="hud-item" id="room">ROOM 1</div>
+      <div class="hud-item" id="area">Emberfall</div>
       <div class="hud-sub" id="score">0 kills</div>
       <div class="hud-bar" aria-label="health">
         <div class="hud-bar-fill" id="health-fill"></div>
@@ -40,16 +41,18 @@
     <!-- Overlays -->
     <div id="overlay" class="overlay">
       <div class="overlay-card">
-        <h1 id="overlay-title">ARENA</h1>
+        <h1 id="overlay-title">EMBERFALL</h1>
         <p id="overlay-body">
-          Move with the left thumb. Tap <b>ATK</b> to swing, <b>DODGE</b> to roll
-          (brief invincibility). Clear each room, then step through the glowing
-          door to go deeper.
+          The last hearth still burns. Move with the left thumb; <b>ATK</b> to
+          swing, <b>DODGE</b> to roll through danger.
         </p>
         <p class="overlay-hint" id="overlay-desktop-hint">
           Desktop: <b>WASD</b> move · <b>J</b> / Space attack · <b>K</b> / Shift dodge
         </p>
-        <button id="overlay-btn" class="start-btn">START</button>
+        <div class="overlay-buttons">
+          <button id="overlay-btn" class="start-btn">NEW GAME</button>
+          <button id="overlay-btn2" class="start-btn secondary hidden">NEW GAME</button>
+        </div>
       </div>
     </div>
   </div>

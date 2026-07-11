@@ -1,16 +1,14 @@
-# Arena — mobile action prototype
+# Emberfall — mobile action-RPG
 
-A tiny top-down action-roguelite prototype in the spirit of Dead Cells / Enter
-the Gungeon, built to play **in a mobile browser** (no app store, no install).
-Pure HTML5 Canvas + vanilla JS — **zero build step**, so it runs straight off
-GitHub Pages.
+A **dark-fantasy action-RPG** ("small Skyrim") for the mobile browser (no app
+store, no install). You explore a fixed, persistent, Zelda-style world of
+screens — fight, travel, die, and wake back up at the hearth. Pure HTML5
+Canvas + vanilla JS — **zero build step**, so it runs straight off GitHub Pages.
 
-This combat prototype is the springboard for a bigger project: a **dark-fantasy
-action-RPG** ("small Skyrim") set in a fixed, persistent, Zelda-style world where
-the core loop is **building a unique character**. See
-[`docs/GAME_PLAN.md`](docs/GAME_PLAN.md) for the full vision and phased roadmap.
-The current arena/room-chain code is the base; the fixed world replaces the
-room chain in Phase 1 of that plan.
+See [`docs/GAME_PLAN.md`](docs/GAME_PLAN.md) for the full vision and phased
+roadmap. **Phase 1 (world & movement foundation) is done:** a hand-authored
+3×3 overworld with a safe home town, screen-flip travel, tile collision,
+autosave to the browser, and respawn-at-home on death.
 
 ## Controls
 
@@ -24,8 +22,9 @@ room chain in Phase 1 of that plan.
 - **J / Space** — attack
 - **K / Shift** — dodge
 
-You face the direction you're moving; the swing lands in front of you. Survive
-as long as you can — enemies spawn faster over time.
+You face the direction you're moving; the swing lands in front of you. Walk
+off a screen's edge (through gaps in the walls) to travel to the next screen.
+The game autosaves; dying returns you to the hearth in Emberfall town.
 
 ## Run it locally
 
@@ -52,29 +51,31 @@ python3 -m http.server 8000
 ## Project layout
 
 ```
-index.html        markup: canvas, HUD, touch buttons, overlays
-css/style.css     mobile-first layout + control styling
-js/main.js        entry point + frame loop + overlay wiring
-js/input.js       floating joystick, action buttons, keyboard fallback
-js/entities.js    Player (move/attack/dodge) and Enemy (chaser)
-js/rooms.js       room generation + door geometry for the run
-js/game.js        arena, room progression, collisions, rendering, HUD
+index.html            markup: canvas, HUD, touch buttons, overlays
+css/style.css         mobile-first layout + control styling
+js/main.js            entry, frame loop, title/death overlay flow
+js/input.js           floating joystick, action buttons, keyboard fallback
+js/entities.js        Player (move/attack/dodge) and Enemy (chaser)
+js/game.js            current screen, transitions, combat, autosave, rendering
+js/engine/tilemap.js  tile grid: collision + shape rendering, logical space
+js/engine/save.js     localStorage save/load
+js/world/world.js     the screen graph (neighbors by direction)
+js/world/screens.js   DATA: hand-authored screens (tiles, spawns, safety)
 ```
 
-Add `?debug` to the URL to expose the running game as `window.__game` in the
-console — handy for jumping rooms or inspecting state while tuning.
+The game runs in a fixed logical space (12×20 tiles of 32px) scaled to fit any
+phone; save data is resolution-independent. World content is authored as
+character-grid data in `js/world/screens.js` — doorways sit at columns 5–6
+(vertical) and rows 9–10 (horizontal) so neighboring screens always align, and
+the module self-validates at load.
 
-All gameplay tuning lives in the `PLAYER` and `ENEMY` constant blocks in
-`js/entities.js` — speeds, cooldowns, damage, attack arc/range, dodge distance.
-Tweak those first when adjusting game feel.
+Add `?debug` to the URL to expose the running game as `window.__game` in the
+console. Gameplay tuning lives in the `PLAYER` and `ENEMY` constant blocks in
+`js/entities.js`.
 
 ## Roadmap
 
-- **Phase 1 (this):** core feel — joystick + attack + dodge, one chasing enemy,
-  health/death/restart, difficulty ramp. ✅
-- **Phase 2:** more enemy types (ranged, charger), enemy attack telegraphs,
-  simple sound, screen shake / hit feedback.
-- **Phase 3:** run structure — an endless chain of rooms, clear the enemy
-  quota to open a glowing door, small heal per room, difficulty ramps by depth. ✅
-- **Phase 4:** weapons & pickups, a real HUD, pause.
-- **Phase 5:** meta-progression — currency, unlocks, permadeath runs.
+See [`docs/GAME_PLAN.md`](docs/GAME_PLAN.md) for the full 8-phase plan.
+**Done:** Phase 1 — world & movement foundation (fixed 3×3 overworld, home
+base, screen-flip travel, tile collision, autosave, respawn-at-home).
+**Next:** Phase 2 — hearts, attributes, XP/levels, gold + drop-on-death.

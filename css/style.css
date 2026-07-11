@@ -57,8 +57,8 @@ canvas#game {
   z-index: 5;
 }
 
-#room {
-  font-size: 26px;
+#area {
+  font-size: 22px;
   font-weight: 800;
   letter-spacing: 2px;
   color: var(--accent);
@@ -210,6 +210,14 @@ canvas#game {
   font-size: 13px !important;
 }
 
+.overlay-buttons {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
 .start-btn {
   margin-top: 16px;
   padding: 14px 38px;
@@ -222,6 +230,14 @@ canvas#game {
   border-radius: 999px;
   pointer-events: auto;
   cursor: pointer;
+}
+
+.start-btn.secondary {
+  background: transparent;
+  color: var(--ink);
+  border: 2px solid rgba(255, 255, 255, 0.28);
+  padding: 12px 28px;
+  font-size: 15px;
 }
 
 .start-btn:active {

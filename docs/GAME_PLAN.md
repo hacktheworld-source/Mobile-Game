@@ -255,7 +255,13 @@ controller) and `js/main.js` (scene/boot + Continue/New Game); extend
 
 ## Current status
 
-- ✅ Prototype base: joystick + melee + dodge, chasing enemy, room chain, health/
-  death/restart, deployed to GitHub Pages. _(This is the springboard; the room
-  chain gets replaced in Phase 1.)_
-- ⏭️ **Next:** Phase 1 — World & Movement Foundation.
+- ✅ Prototype base: joystick + melee + dodge, chasing enemy, health/death,
+  deployed to GitHub Pages.
+- ✅ **Phase 1 — World & Movement Foundation.** Fixed logical space (12×20
+  tiles), tile engine with collision (`js/engine/tilemap.js`), hand-authored
+  3×3 overworld with the Emberfall home town (`js/world/screens.js`),
+  screen-flip travel through doorway gaps, per-screen transient enemies,
+  autosave/continue (`js/engine/save.js`), respawn-at-home on death. The old
+  procedural room chain (`js/rooms.js`) is retired.
+- ⏭️ **Next:** Phase 2 — Hearts & core stats (attributes, XP/levels, freeform
+  point spend, gold + drop-on-death).

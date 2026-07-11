@@ -1,5 +1,7 @@
 // Game entities: Player (movement + attack + dodge roll) and Enemy (chaser).
-// All units are in CSS pixels; time deltas (dt) are in seconds.
+// All units are logical pixels (fixed 384x640 space); dt is in seconds.
+
+import { LOGICAL_W, LOGICAL_H } from "./engine/tilemap.js";
 
 export const PLAYER = {
   radius: 18,
@@ -73,7 +75,7 @@ export class Player {
     this.dodgeCd = PLAYER.dodgeCooldown;
   }
 
-  update(dt, moveX, moveY, bounds) {
+  update(dt, moveX, moveY, map) {
     // Timers
     this.attackTimer = Math.max(0, this.attackTimer - dt);
     this.attackCd = Math.max(0, this.attackCd - dt);
@@ -92,12 +94,17 @@ export class Player {
       }
     }
 
-    this.x += this.vx * dt;
-    this.y += this.vy * dt;
-
-    // Clamp to arena.
-    this.x = Math.max(bounds.x + this.radius, Math.min(bounds.x + bounds.w - this.radius, this.x));
-    this.y = Math.max(bounds.y + this.radius, Math.min(bounds.y + bounds.h - this.radius, this.y));
+    // Tile collision (slides along walls). No screen-edge clamp: doorway gaps
+    // let the player walk off the map, which triggers a screen transition.
+    const res = map.moveCircle(
+      this.x,
+      this.y,
+      this.x + this.vx * dt,
+      this.y + this.vy * dt,
+      this.radius
+    );
+    this.x = res.x;
+    this.y = res.y;
   }
 
   // Is a point within the current swing cone?
@@ -148,7 +155,7 @@ export class Enemy {
     this.alive = true;
   }
 
-  update(dt, player, bounds) {
+  update(dt, player, map) {
     this.hitCd = Math.max(0, this.hitCd - dt);
     this.flash = Math.max(0, this.flash - dt);
     this.knockTimer = Math.max(0, this.knockTimer - dt);
@@ -164,11 +171,19 @@ export class Enemy {
       this.vy = (dy / d) * ENEMY.speed;
     }
 
-    this.x += this.vx * dt;
-    this.y += this.vy * dt;
+    const res = map.moveCircle(
+      this.x,
+      this.y,
+      this.x + this.vx * dt,
+      this.y + this.vy * dt,
+      this.radius
+    );
+    this.x = res.x;
+    this.y = res.y;
 
-    this.x = Math.max(bounds.x + this.radius, Math.min(bounds.x + bounds.w - this.radius, this.x));
-    this.y = Math.max(bounds.y + this.radius, Math.min(bounds.y + bounds.h - this.radius, this.y));
+    // Unlike the player, enemies never leave the screen (even via doorways).
+    this.x = Math.max(this.radius, Math.min(LOGICAL_W - this.radius, this.x));
+    this.y = Math.max(this.radius, Math.min(LOGICAL_H - this.radius, this.y));
   }
 
   takeDamage(amount, fromX, fromY) {
