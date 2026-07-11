@@ -5,8 +5,12 @@ the Gungeon, built to play **in a mobile browser** (no app store, no install).
 Pure HTML5 Canvas + vanilla JS — **zero build step**, so it runs straight off
 GitHub Pages.
 
-This is **Phase 1**: the goal is to nail the core movement/combat *feel* in a
-single arena before adding content.
+This combat prototype is the springboard for a bigger project: a **dark-fantasy
+action-RPG** ("small Skyrim") set in a fixed, persistent, Zelda-style world where
+the core loop is **building a unique character**. See
+[`docs/GAME_PLAN.md`](docs/GAME_PLAN.md) for the full vision and phased roadmap.
+The current arena/room-chain code is the base; the fixed world replaces the
+room chain in Phase 1 of that plan.
 
 ## Controls
 
