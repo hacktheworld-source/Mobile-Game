@@ -1,15 +1,16 @@
-// Game: owns the current screen (tilemap + enemies), the world graph,
-// screen-flip transitions, autosave, and rendering.
+// Game: owns the current screen (tilemap + enemies + pickups), the world
+// graph, screen-flip transitions, RPG progression, autosave, and rendering.
 //
 // All gameplay happens in a fixed logical space (LOGICAL_W x LOGICAL_H) that
 // is scaled and letterboxed to the device in render().
 
-import { Player, Enemy, PLAYER, ENEMY } from "./entities.js";
+import { Player, Enemy, Pickup, PLAYER, ENEMY } from "./entities.js";
 import { Input, consumeActions } from "./input.js";
 import { TileMap, TILE_SIZE, LOGICAL_W, LOGICAL_H } from "./engine/tilemap.js";
 import { writeSave } from "./engine/save.js";
 import { World } from "./world/world.js";
 import { SCREENS, HOME_ID, HOME_SPAWN } from "./world/screens.js";
+import { xpNeeded } from "./rpg/stats.js";
 
 const COLORS = {
   page: "#0e1016",
@@ -19,12 +20,15 @@ const COLORS = {
   enemyFlash: "#ffffff",
   swing: "rgba(255,107,107,0.35)",
   accent: "#4dd6a1",
+  gold: "#ffd166",
+  heart: "#ff5470",
 };
 
 const TRANSITION_DUR = 0.5; // fade between screens
 const EDGE_OUT = 6; // how far past the map edge the player's center must go
 const EDGE_IN = PLAYER.radius + 8; // how far inside the new screen they appear
 const AUTOSAVE_INTERVAL = 4; // seconds
+const PICKUP_RANGE = 30; // distance at which loot is collected
 
 const tileCenter = (t) => (t + 0.5) * TILE_SIZE;
 
@@ -32,22 +36,27 @@ export class Game {
   constructor(canvas, hud) {
     this.canvas = canvas;
     this.ctx = canvas.getContext("2d");
-    this.hud = hud; // { areaEl, scoreEl, healthFill, attackBtn, dodgeBtn }
-    this.state = "menu"; // menu | playing | transition | dead
+    this.hud = hud; // { areaEl, statusEl, heartsEl, xpFill, attackBtn, dodgeBtn, levelupBtn }
+    this.state = "menu"; // menu | playing | paused | transition | dead
     this.onGameOver = null;
+    this.onHudChange = null; // notifies the character sheet to refresh
 
     this.world = new World(SCREENS);
     this.map = null;
     this.maps = new Map(); // screenId -> TileMap cache
     this.player = null;
     this.enemies = [];
+    this.pickups = [];
+    this.pouch = null; // { screenId, x, y, amount } — dropped gold on death
     this.kills = 0;
 
+    this.time = 0;
     this.bannerText = "";
     this.bannerTimer = 0;
     this.transitionTimer = 0;
     this.pendingDir = null;
     this.saveTimer = 0;
+    this._heartsSig = "";
 
     this.resize();
     window.addEventListener("resize", () => this.resize());
@@ -71,6 +80,7 @@ export class Game {
   startNew() {
     this.player = new Player(tileCenter(HOME_SPAWN.x), tileCenter(HOME_SPAWN.y));
     this.kills = 0;
+    this.pouch = null;
     this.enterScreen(HOME_ID);
     this.state = "playing";
     this.saveNow();
@@ -78,15 +88,21 @@ export class Game {
 
   continueRun(save) {
     this.player = new Player(save.x, save.y);
-    this.player.health = save.health ?? PLAYER.maxHealth;
+    this.player.stats = { ...this.player.stats, ...(save.stats || {}) };
+    this.player.level = save.level || 1;
+    this.player.xp = save.xp || 0;
+    this.player.points = save.points || 0;
+    this.player.gold = save.gold || 0;
+    this.player.hp = Math.min(save.hp ?? this.player.maxHp, this.player.maxHp);
     this.kills = save.kills || 0;
+    this.pouch = save.pouch || null;
     const id = SCREENS[save.screenId] ? save.screenId : HOME_ID;
     this.enterScreen(id);
     this.state = "playing";
   }
 
   respawn() {
-    this.player.health = PLAYER.maxHealth;
+    this.player.hp = this.player.maxHp;
     this.player.alive = true;
     this.player.x = tileCenter(HOME_SPAWN.x);
     this.player.y = tileCenter(HOME_SPAWN.y);
@@ -100,10 +116,11 @@ export class Game {
     const screen = this.world.current;
     if (!this.maps.has(id)) this.maps.set(id, new TileMap(screen.tiles));
     this.map = this.maps.get(id);
-    // Enemies are transient: they respawn each time you enter the screen.
+    // Enemies and loose loot are transient; enemies respawn on re-entry.
     this.enemies = screen.safe
       ? []
       : screen.enemies.map((e) => new Enemy(tileCenter(e.x), tileCenter(e.y)));
+    this.pickups = [];
     // Don't carry a mid-swing/mid-roll into a new screen.
     if (this.player) {
       this.player.attackTimer = 0;
@@ -115,13 +132,20 @@ export class Game {
   }
 
   buildSave() {
+    const p = this.player;
     return {
-      v: 1,
+      v: 2,
       screenId: this.world.currentId,
-      x: this.player.x,
-      y: this.player.y,
-      health: this.player.health,
+      x: p.x,
+      y: p.y,
+      hp: p.hp,
+      stats: { ...p.stats },
+      level: p.level,
+      xp: p.xp,
+      points: p.points,
+      gold: p.gold,
       kills: this.kills,
+      pouch: this.pouch,
     };
   }
 
@@ -129,9 +153,31 @@ export class Game {
     if (this.player) writeSave(this.buildSave());
   }
 
+  // ---------- character sheet / pause ----------
+
+  openSheet() {
+    if (this.state !== "playing") return false;
+    this.state = "paused";
+    return true;
+  }
+
+  closeSheet() {
+    if (this.state === "paused") this.state = "playing";
+  }
+
+  spendPoint(attrKey) {
+    if (this.player && this.player.spendPoint(attrKey)) {
+      this.updateHud();
+      this.saveNow();
+      return true;
+    }
+    return false;
+  }
+
   // ---------- update ----------
 
   update(dt) {
+    this.time += dt;
     if (this.state === "playing") this.updatePlaying(dt);
     else if (this.state === "transition") this.updateTransition(dt);
   }
@@ -163,25 +209,27 @@ export class Game {
 
       if (this.player.isAttacking && !this.player.attackHitSet.has(e)) {
         if (this.player.hitsPoint(e.x, e.y)) {
-          e.takeDamage(PLAYER.attackDamage, this.player.x, this.player.y);
+          e.takeDamage(this.player.damage, this.player.x, this.player.y);
           this.player.attackHitSet.add(e);
-          if (!e.alive) this.kills += 1;
+          if (!e.alive) this.onEnemyKilled(e);
         }
       }
 
       const dist = Math.hypot(e.x - this.player.x, e.y - this.player.y);
       if (dist < e.radius + this.player.radius && e.hitCd <= 0) {
-        this.player.takeDamage(ENEMY.contactDamage);
-        e.hitCd = ENEMY.hitInterval;
+        if (this.player.takeDamage(ENEMY.contactDamage)) {
+          e.hitCd = ENEMY.hitInterval;
+        }
       }
     }
 
     this.separateEnemies();
     this.enemies = this.enemies.filter((e) => e.alive);
 
+    this.updatePickups(dt);
+
     if (!this.player.alive) {
-      this.state = "dead";
-      if (this.onGameOver) this.onGameOver(this.kills);
+      this.die();
       return;
     }
 
@@ -192,6 +240,64 @@ export class Game {
     }
 
     this.updateHud();
+  }
+
+  onEnemyKilled(e) {
+    this.kills += 1;
+    this.player.gainXP(ENEMY.xp);
+    const gold = ENEMY.goldMin + Math.floor(Math.random() * (ENEMY.goldMax - ENEMY.goldMin + 1));
+    this.pickups.push(new Pickup("gold", e.x, e.y, gold));
+    if (Math.random() < ENEMY.heartDropChance) {
+      this.pickups.push(new Pickup("heart", e.x + 14, e.y - 8));
+    }
+  }
+
+  updatePickups(dt) {
+    const p = this.player;
+    for (const pk of this.pickups) {
+      pk.t += dt * 4;
+      if (Math.hypot(pk.x - p.x, pk.y - p.y) < PICKUP_RANGE) {
+        if (pk.type === "gold") p.gold += pk.amount;
+        else p.heal(2); // a dropped heart restores one full heart
+        pk.collected = true;
+      }
+    }
+    this.pickups = this.pickups.filter((pk) => !pk.collected);
+
+    // The dropped gold pouch from your last death, if it's on this screen.
+    if (this.pouch && this.pouch.screenId === this.world.currentId) {
+      if (Math.hypot(this.pouch.x - p.x, this.pouch.y - p.y) < PICKUP_RANGE + 6) {
+        p.gold += this.pouch.amount;
+        this.pouch = null;
+        this.bannerText = "GOLD RECLAIMED";
+        this.bannerTimer = 1.2;
+        this.saveNow();
+      }
+    }
+  }
+
+  die() {
+    // Drop carried gold where you fell. A new death replaces the old pouch.
+    let dropped = 0;
+    if (this.player.gold > 0) {
+      dropped = this.player.gold;
+      this.pouch = {
+        screenId: this.world.currentId,
+        x: Math.max(20, Math.min(LOGICAL_W - 20, this.player.x)),
+        y: Math.max(20, Math.min(LOGICAL_H - 20, this.player.y)),
+        amount: dropped,
+      };
+      this.player.gold = 0;
+    }
+    this.state = "dead";
+    this.saveNow();
+    if (this.onGameOver) {
+      this.onGameOver({
+        kills: this.kills,
+        dropped,
+        screenName: this.world.current.name,
+      });
+    }
   }
 
   edgeExitDir() {
@@ -258,15 +364,35 @@ export class Game {
     }
   }
 
+  // ---------- HUD ----------
+
   updateHud() {
-    if (!this.player) return;
+    const p = this.player;
+    if (!p) return;
     const screen = this.world.current;
     this.hud.areaEl.textContent = screen ? screen.name : "";
-    this.hud.scoreEl.textContent = this.kills + (this.kills === 1 ? " kill" : " kills");
-    const pct = (this.player.health / PLAYER.maxHealth) * 100;
-    this.hud.healthFill.style.width = pct + "%";
-    this.hud.attackBtn.classList.toggle("cooling", this.player.attackCd > 0);
-    this.hud.dodgeBtn.classList.toggle("cooling", this.player.dodgeCd > 0);
+    this.hud.statusEl.textContent = `Lv ${p.level} · ${p.gold} gold`;
+    this.hud.xpFill.style.width = Math.min(100, (p.xp / xpNeeded(p.level)) * 100) + "%";
+
+    // Hearts (rebuild only when they change).
+    const sig = `${p.hp}/${p.maxHp}`;
+    if (sig !== this._heartsSig) {
+      this._heartsSig = sig;
+      let html = "";
+      for (let i = 0; i < p.maxHearts; i++) {
+        const cls = p.hp >= (i + 1) * 2 ? "full" : p.hp === i * 2 + 1 ? "half" : "";
+        html += `<span class="heart ${cls}">♥</span>`;
+      }
+      this.hud.heartsEl.innerHTML = html;
+    }
+
+    this.hud.levelupBtn.classList.toggle("hidden", p.points === 0 || this.state === "dead");
+    if (p.points > 0) this.hud.levelupBtn.textContent = `LEVEL UP ＋${p.points}`;
+
+    this.hud.attackBtn.classList.toggle("cooling", p.attackCd > 0);
+    this.hud.dodgeBtn.classList.toggle("cooling", p.dodgeCd > 0);
+
+    if (this.onHudChange) this.onHudChange();
   }
 
   // ---------- render ----------
@@ -289,6 +415,9 @@ export class Game {
 
     if (this.state === "menu") return;
 
+    this.renderPickups(ctx);
+    this.renderPouch(ctx);
+
     for (const e of this.enemies) {
       ctx.fillStyle = e.flash > 0 ? COLORS.enemyFlash : COLORS.enemy;
       ctx.beginPath();
@@ -306,6 +435,44 @@ export class Game {
     this.renderPlayer(ctx);
     this.renderBanner(ctx);
     this.renderTransition(ctx);
+  }
+
+  renderPickups(ctx) {
+    for (const pk of this.pickups) {
+      const bob = Math.sin(pk.t) * 2;
+      if (pk.type === "gold") {
+        ctx.fillStyle = COLORS.gold;
+        ctx.beginPath();
+        ctx.arc(pk.x, pk.y + bob, pk.radius, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = "rgba(255,255,255,0.5)";
+        ctx.beginPath();
+        ctx.arc(pk.x - 2, pk.y + bob - 2, 2.4, 0, Math.PI * 2);
+        ctx.fill();
+      } else {
+        ctx.fillStyle = COLORS.heart;
+        ctx.font = "16px sans-serif";
+        ctx.textAlign = "center";
+        ctx.fillText("♥", pk.x, pk.y + bob + 6);
+      }
+    }
+  }
+
+  renderPouch(ctx) {
+    if (!this.pouch || this.pouch.screenId !== this.world.currentId) return;
+    const pulse = 0.5 + 0.5 * Math.sin(this.time * 5);
+    ctx.save();
+    ctx.shadowColor = COLORS.gold;
+    ctx.shadowBlur = 10 + 8 * pulse;
+    ctx.fillStyle = COLORS.gold;
+    ctx.beginPath();
+    ctx.arc(this.pouch.x, this.pouch.y, 11, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+    ctx.fillStyle = "#0e1016";
+    ctx.font = "800 12px sans-serif";
+    ctx.textAlign = "center";
+    ctx.fillText("$", this.pouch.x, this.pouch.y + 4);
   }
 
   renderPlayer(ctx) {
@@ -328,6 +495,10 @@ export class Game {
       ctx.restore();
     }
 
+    // Blink while post-hit invulnerable; translucent while dodging.
+    if (p.hurtTimer > 0 && Math.floor(this.time * 14) % 2 === 0) {
+      ctx.globalAlpha = 0.35;
+    }
     ctx.fillStyle = p.isDodging ? COLORS.playerDodge : COLORS.player;
     if (p.isDodging) ctx.globalAlpha = 0.6;
     ctx.beginPath();

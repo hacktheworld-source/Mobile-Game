@@ -74,8 +74,8 @@ canvas#game {
 }
 
 .hud-bar {
-  width: 180px;
-  height: 10px;
+  width: 150px;
+  height: 6px;
   border-radius: 6px;
   background: rgba(255, 255, 255, 0.12);
   overflow: hidden;
@@ -83,9 +83,155 @@ canvas#game {
 
 .hud-bar-fill {
   height: 100%;
-  width: 100%;
+  width: 0%;
   background: linear-gradient(90deg, var(--danger), var(--accent));
   transition: width 0.12s linear;
+}
+
+.hud-bar-fill.xp {
+  background: linear-gradient(90deg, #2f8f6d, var(--accent));
+}
+
+/* ---------- Hearts ---------- */
+#hearts {
+  display: flex;
+  gap: 2px;
+  font-size: 22px;
+  line-height: 1;
+  text-shadow: 0 2px 6px rgba(0, 0, 0, 0.7);
+}
+
+.heart {
+  position: relative;
+  color: #3a222c; /* empty */
+}
+
+.heart.full {
+  color: var(--danger);
+}
+
+.heart.half::after {
+  content: "♥";
+  position: absolute;
+  left: 0;
+  top: 0;
+  color: var(--danger);
+  clip-path: inset(0 50% 0 0);
+}
+
+/* ---------- Level-up button ---------- */
+#levelup-btn {
+  position: absolute;
+  top: calc(env(safe-area-inset-top, 0px) + 14px);
+  right: calc(env(safe-area-inset-right, 0px) + 14px);
+  z-index: 6;
+  padding: 10px 16px;
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 1px;
+  color: #0e1016;
+  background: var(--accent);
+  border: none;
+  border-radius: 999px;
+  pointer-events: auto;
+  cursor: pointer;
+  animation: pulse 1.4s ease-in-out infinite;
+}
+
+#levelup-btn.hidden {
+  display: none;
+}
+
+@keyframes pulse {
+  0%,
+  100% {
+    transform: scale(1);
+    box-shadow: 0 0 0 rgba(77, 214, 161, 0.5);
+  }
+  50% {
+    transform: scale(1.06);
+    box-shadow: 0 0 18px rgba(77, 214, 161, 0.55);
+  }
+}
+
+/* ---------- Character sheet ---------- */
+.sheet-card {
+  width: min(92vw, 380px);
+  background: #141824;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 16px;
+  padding: 22px 20px;
+}
+
+.sheet-card h2 {
+  margin: 0 0 4px;
+  letter-spacing: 3px;
+  color: var(--accent);
+  font-size: 24px;
+}
+
+.sheet-points {
+  color: var(--muted);
+  font-size: 14px;
+  font-weight: 700;
+  margin-bottom: 14px;
+}
+
+.sheet-points.has-points {
+  color: var(--accent);
+}
+
+.attr-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 0;
+  border-top: 1px solid rgba(255, 255, 255, 0.07);
+  text-align: left;
+}
+
+.attr-info {
+  flex: 1;
+}
+
+.attr-name {
+  font-weight: 800;
+  font-size: 16px;
+}
+
+.attr-desc {
+  color: var(--muted);
+  font-size: 12px;
+  margin-top: 2px;
+}
+
+.attr-value {
+  font-size: 20px;
+  font-weight: 800;
+  min-width: 28px;
+  text-align: center;
+}
+
+.attr-plus {
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  border: none;
+  font-size: 22px;
+  font-weight: 800;
+  color: #0e1016;
+  background: var(--accent);
+  pointer-events: auto;
+  cursor: pointer;
+}
+
+.attr-plus:disabled {
+  background: rgba(255, 255, 255, 0.12);
+  color: rgba(255, 255, 255, 0.3);
+}
+
+.attr-plus:active:not(:disabled) {
+  transform: scale(0.92);
 }
 
 /* ---------- Touch controls ---------- */

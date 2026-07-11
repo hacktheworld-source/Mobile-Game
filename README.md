@@ -6,9 +6,10 @@ screens — fight, travel, die, and wake back up at the hearth. Pure HTML5
 Canvas + vanilla JS — **zero build step**, so it runs straight off GitHub Pages.
 
 See [`docs/GAME_PLAN.md`](docs/GAME_PLAN.md) for the full vision and phased
-roadmap. **Phase 1 (world & movement foundation) is done:** a hand-authored
-3×3 overworld with a safe home town, screen-flip travel, tile collision,
-autosave to the browser, and respawn-at-home on death.
+roadmap. **Done so far:** a hand-authored 3×3 overworld with a safe home town,
+screen-flip travel, tile collision, autosave (Phase 1); hearts, four
+attributes with freeform point spending, XP levels, gold drops, and a
+recoverable death pouch (Phase 2).
 
 ## Controls
 
@@ -58,9 +59,10 @@ js/input.js           floating joystick, action buttons, keyboard fallback
 js/entities.js        Player (move/attack/dodge) and Enemy (chaser)
 js/game.js            current screen, transitions, combat, autosave, rendering
 js/engine/tilemap.js  tile grid: collision + shape rendering, logical space
-js/engine/save.js     localStorage save/load
+js/engine/save.js     localStorage save/load (versioned, with migration)
 js/world/world.js     the screen graph (neighbors by direction)
 js/world/screens.js   DATA: hand-authored screens (tiles, spawns, safety)
+js/rpg/stats.js       attributes, per-point scaling, XP curve
 ```
 
 The game runs in a fixed logical space (12×20 tiles of 32px) scaled to fit any
@@ -76,6 +78,6 @@ console. Gameplay tuning lives in the `PLAYER` and `ENEMY` constant blocks in
 ## Roadmap
 
 See [`docs/GAME_PLAN.md`](docs/GAME_PLAN.md) for the full 8-phase plan.
-**Done:** Phase 1 — world & movement foundation (fixed 3×3 overworld, home
-base, screen-flip travel, tile collision, autosave, respawn-at-home).
-**Next:** Phase 2 — hearts, attributes, XP/levels, gold + drop-on-death.
+**Done:** Phase 1 (world & movement foundation) and Phase 2 (hearts,
+attributes, XP levels, gold, recoverable death pouch).
+**Next:** Phase 3 — ranged weapon, magic, and more enemy types.

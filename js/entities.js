@@ -1,13 +1,15 @@
-// Game entities: Player (movement + attack + dodge roll) and Enemy (chaser).
+// Game entities: Player (movement + attack + dodge + RPG stats), Enemy
+// (chaser), and Pickup (dropped gold / hearts).
 // All units are logical pixels (fixed 384x640 space); dt is in seconds.
+// Health is measured in HALF-HEARTS.
 
 import { LOGICAL_W, LOGICAL_H } from "./engine/tilemap.js";
+import { BASE_HEARTS, POINTS_PER_LEVEL, SCALING, xpNeeded } from "./rpg/stats.js";
 
 export const PLAYER = {
   radius: 18,
   speed: 230,
-  maxHealth: 100,
-  // Attack
+  // Attack (base values — attributes scale these; see derived getters)
   attackCooldown: 0.3,
   attackDuration: 0.18, // how long the swing arc is "live" / drawn
   attackRange: 72,
@@ -17,7 +19,8 @@ export const PLAYER = {
   dodgeCooldown: 0.75,
   dodgeDuration: 0.22,
   dodgeSpeed: 620,
-  // i-frames last the whole roll
+  // Brief invulnerability after being hit, so packs can't stun-lock you.
+  hurtIframes: 0.6,
 };
 
 export class Player {
@@ -27,8 +30,16 @@ export class Player {
     this.vx = 0;
     this.vy = 0;
     this.radius = PLAYER.radius;
-    this.health = PLAYER.maxHealth;
     this.facing = -Math.PI / 2; // pointing up initially
+
+    // --- RPG state ---
+    this.stats = { might: 0, finesse: 0, focus: 0, vitality: 0 };
+    this.level = 1;
+    this.xp = 0;
+    this.points = 0;
+    this.gold = 0;
+    this.bonusHearts = 0; // future: heart containers found in the world
+    this.hp = this.maxHp; // half-hearts
 
     this.attackTimer = 0; // > 0 while swing is live
     this.attackCd = 0;
@@ -39,7 +50,34 @@ export class Player {
     this.dodgeDirX = 0;
     this.dodgeDirY = 0;
 
+    this.hurtTimer = 0; // post-hit i-frames
     this.alive = true;
+  }
+
+  // --- derived stats (attributes scale the PLAYER base constants) ---
+  get maxHearts() {
+    return BASE_HEARTS + this.stats.vitality + this.bonusHearts;
+  }
+  get maxHp() {
+    return this.maxHearts * 2;
+  }
+  get speed() {
+    return PLAYER.speed * (1 + SCALING.finesseSpeed * this.stats.finesse);
+  }
+  get damage() {
+    return PLAYER.attackDamage * (1 + SCALING.mightDamage * this.stats.might);
+  }
+  get attackCooldown() {
+    return Math.max(
+      SCALING.minAttackCd,
+      PLAYER.attackCooldown * (1 - SCALING.focusAttackCd * this.stats.focus)
+    );
+  }
+  get dodgeCooldown() {
+    return Math.max(
+      SCALING.minDodgeCd,
+      PLAYER.dodgeCooldown * (1 - SCALING.finesseDodgeCd * this.stats.finesse)
+    );
   }
 
   get isDodging() {
@@ -49,13 +87,39 @@ export class Player {
     return this.attackTimer > 0;
   }
   get invulnerable() {
-    return this.isDodging;
+    return this.isDodging || this.hurtTimer > 0;
   }
 
+  // --- progression ---
+  gainXP(amount) {
+    this.xp += amount;
+    let leveled = false;
+    while (this.xp >= xpNeeded(this.level)) {
+      this.xp -= xpNeeded(this.level);
+      this.level += 1;
+      this.points += POINTS_PER_LEVEL;
+      leveled = true;
+    }
+    return leveled;
+  }
+
+  spendPoint(attrKey) {
+    if (this.points <= 0 || !(attrKey in this.stats)) return false;
+    this.stats[attrKey] += 1;
+    this.points -= 1;
+    if (attrKey === "vitality") this.hp += 2; // the new heart arrives full
+    return true;
+  }
+
+  heal(halves) {
+    this.hp = Math.min(this.maxHp, this.hp + halves);
+  }
+
+  // --- combat ---
   tryAttack() {
     if (this.attackCd > 0 || this.isDodging) return;
     this.attackTimer = PLAYER.attackDuration;
-    this.attackCd = PLAYER.attackCooldown;
+    this.attackCd = this.attackCooldown;
     this.attackHitSet.clear();
   }
 
@@ -72,7 +136,7 @@ export class Player {
     this.dodgeDirX = dx / mag;
     this.dodgeDirY = dy / mag;
     this.dodgeTimer = PLAYER.dodgeDuration;
-    this.dodgeCd = PLAYER.dodgeCooldown;
+    this.dodgeCd = this.dodgeCooldown;
   }
 
   update(dt, moveX, moveY, map) {
@@ -81,13 +145,14 @@ export class Player {
     this.attackCd = Math.max(0, this.attackCd - dt);
     this.dodgeCd = Math.max(0, this.dodgeCd - dt);
     this.dodgeTimer = Math.max(0, this.dodgeTimer - dt);
+    this.hurtTimer = Math.max(0, this.hurtTimer - dt);
 
     if (this.isDodging) {
       this.vx = this.dodgeDirX * PLAYER.dodgeSpeed;
       this.vy = this.dodgeDirY * PLAYER.dodgeSpeed;
     } else {
-      this.vx = moveX * PLAYER.speed;
-      this.vy = moveY * PLAYER.speed;
+      this.vx = moveX * this.speed;
+      this.vy = moveY * this.speed;
       // Update facing from movement intent (feels responsive for a melee char).
       if (Math.hypot(moveX, moveY) > 0.1) {
         this.facing = Math.atan2(moveY, moveX);
@@ -120,13 +185,16 @@ export class Player {
     return Math.abs(a) <= PLAYER.attackArc / 2;
   }
 
+  // amount is in half-hearts. Returns true if the hit landed.
   takeDamage(amount) {
-    if (this.invulnerable) return;
-    this.health -= amount;
-    if (this.health <= 0) {
-      this.health = 0;
+    if (this.invulnerable) return false;
+    this.hp -= amount;
+    this.hurtTimer = PLAYER.hurtIframes;
+    if (this.hp <= 0) {
+      this.hp = 0;
       this.alive = false;
     }
+    return true;
   }
 }
 
@@ -134,9 +202,13 @@ export const ENEMY = {
   radius: 15,
   speed: 92,
   maxHealth: 100,
-  contactDamage: 10,
+  contactDamage: 1, // half-hearts
   hitInterval: 0.55, // min seconds between damage ticks on the player
   knockback: 260,
+  xp: 12,
+  goldMin: 4,
+  goldMax: 9,
+  heartDropChance: 0.15,
 };
 
 export class Enemy {
@@ -196,5 +268,17 @@ export class Enemy {
     this.knockY = (dy / d) * ENEMY.knockback;
     this.knockTimer = 0.12;
     if (this.health <= 0) this.alive = false;
+  }
+}
+
+// Dropped loot lying on the ground: gold coins or a heart.
+export class Pickup {
+  constructor(type, x, y, amount = 0) {
+    this.type = type; // "gold" | "heart"
+    this.x = x;
+    this.y = y;
+    this.amount = amount;
+    this.radius = type === "gold" ? 7 : 9;
+    this.t = Math.random() * Math.PI * 2; // bob phase
   }
 }

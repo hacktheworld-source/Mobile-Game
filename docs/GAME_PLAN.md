@@ -263,5 +263,13 @@ controller) and `js/main.js` (scene/boot + Continue/New Game); extend
   screen-flip travel through doorway gaps, per-screen transient enemies,
   autosave/continue (`js/engine/save.js`), respawn-at-home on death. The old
   procedural room chain (`js/rooms.js`) is retired.
-- ⏭️ **Next:** Phase 2 — Hearts & core stats (attributes, XP/levels, freeform
-  point spend, gold + drop-on-death).
+- ✅ **Phase 2 — Hearts & core stats.** Heart-based health (half-heart damage,
+  post-hit i-frames), four attributes (Might/Finesse/Focus/Vitality) with
+  freeform point spend via the pausing character sheet (`js/rpg/stats.js`),
+  chunky XP levels (+3 points each), enemy gold/heart drops, and the
+  recoverable death pouch (die → carried gold drops where you fell → corpse
+  run to reclaim; a second death replaces it). Save format v2 with v1
+  migration. _Settled design calls: hearts over HP bar; recoverable pouch over
+  flat % loss; Focus = attack speed now, spell power later._
+- ⏭️ **Next:** Phase 3 — Combat expansion (ranged weapon, magic + Focus
+  resource, loadout switching, 2-3 enemy types with tells).

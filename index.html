@@ -20,9 +20,21 @@
     <!-- HUD -->
     <div id="hud">
       <div class="hud-item" id="area">Emberfall</div>
-      <div class="hud-sub" id="score">0 kills</div>
-      <div class="hud-bar" aria-label="health">
-        <div class="hud-bar-fill" id="health-fill"></div>
+      <div id="hearts" aria-label="health"></div>
+      <div class="hud-sub" id="status">Lv 1 · 0 gold</div>
+      <div class="hud-bar" aria-label="experience">
+        <div class="hud-bar-fill xp" id="xp-fill"></div>
+      </div>
+    </div>
+    <button id="levelup-btn" class="hidden">LEVEL UP ＋3</button>
+
+    <!-- Character sheet (pauses the game) -->
+    <div id="sheet" class="overlay hidden">
+      <div class="overlay-card sheet-card">
+        <h2>CHARACTER</h2>
+        <div class="sheet-points" id="sheet-points"></div>
+        <div id="sheet-rows"></div>
+        <button id="sheet-close" class="start-btn">RESUME</button>
       </div>
     </div>
 
