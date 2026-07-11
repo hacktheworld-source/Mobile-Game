@@ -283,6 +283,14 @@ canvas#game {
   pointer-events: none;
 }
 
+/* The weapon-mode button sits out of the row, nestled above and between
+   DODGE and ATK (their centers are ~96px and ~46px from the right edge). */
+.action-btn.mode {
+  position: absolute;
+  right: 67px;
+  bottom: 112px;
+}
+
 .action-btn {
   pointer-events: auto;
   border: none;
@@ -318,7 +326,6 @@ canvas#game {
 .action-btn.mode {
   width: 58px;
   height: 58px;
-  margin-bottom: 34px;
   font-size: 11px;
   background: #2a3146;
   border: 2px solid rgba(255, 255, 255, 0.2);
