@@ -271,5 +271,14 @@ controller) and `js/main.js` (scene/boot + Continue/New Game); extend
   run to reclaim; a second death replaces it). Save format v2 with v1
   migration. _Settled design calls: hearts over HP bar; recoverable pouch over
   flat % loss; Focus = attack speed now, spell power later._
-- ⏭️ **Next:** Phase 3 — Combat expansion (ranged weapon, magic + Focus
-  resource, loadout switching, 2-3 enemy types with tells).
+- ✅ **Phase 3 — Combat expansion.** Three weapon modes on one action button
+  with a SWORD/BOW/FIRE switcher (Q/1/2/3 on desktop): melee swing, bow
+  (Finesse-scaled arrows) and the Firebolt spell (Focus-scaled, 30 of 100
+  mana, 12/s regen, blue HUD bar). Projectiles fly over water, stop at
+  walls/trees, and soft auto-aim within a ~37° cone. Two new enemies with
+  tells: the charger (windup blink → locked-line rush for a full heart; a hit
+  during windup cancels it) and the archer (keeps distance, aim-line
+  telegraph, arrows you can dodge-roll through). Enemy types are authored
+  per-screen; weapon mode persists in the save.
+- ⏭️ **Next:** Phase 4 — Gear & inventory (equipment, loot, chests, the
+  Emberfall shop, first item-gating tools).

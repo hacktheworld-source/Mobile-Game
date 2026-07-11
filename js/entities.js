@@ -9,12 +9,23 @@ import { BASE_HEARTS, POINTS_PER_LEVEL, SCALING, xpNeeded } from "./rpg/stats.js
 export const PLAYER = {
   radius: 18,
   speed: 230,
-  // Attack (base values — attributes scale these; see derived getters)
+  // Melee (base values — attributes scale these; see derived getters)
   attackCooldown: 0.3,
   attackDuration: 0.18, // how long the swing arc is "live" / drawn
   attackRange: 72,
   attackArc: Math.PI * 0.6, // ~108° cone in front of facing
   attackDamage: 40,
+  // Bow (scales with Finesse)
+  bowCooldown: 0.5,
+  bowDamage: 30,
+  bowSpeed: 380,
+  // Firebolt spell (scales with Focus, costs mana)
+  spellCooldown: 0.4,
+  spellDamage: 55,
+  spellCost: 30,
+  spellSpeed: 300,
+  manaMax: 100,
+  manaRegen: 12, // per second
   // Dodge roll
   dodgeCooldown: 0.75,
   dodgeDuration: 0.22,
@@ -22,6 +33,8 @@ export const PLAYER = {
   // Brief invulnerability after being hit, so packs can't stun-lock you.
   hurtIframes: 0.6,
 };
+
+export const MODES = ["sword", "bow", "spell"];
 
 export class Player {
   constructor(x, y) {
@@ -41,9 +54,14 @@ export class Player {
     this.bonusHearts = 0; // future: heart containers found in the world
     this.hp = this.maxHp; // half-hearts
 
+    this.mode = "sword"; // sword | bow | spell
+    this.mana = PLAYER.manaMax;
+
     this.attackTimer = 0; // > 0 while swing is live
     this.attackCd = 0;
     this.attackHitSet = new Set(); // enemies already hit by current swing
+    this.shootCd = 0;
+    this.castCd = 0;
 
     this.dodgeTimer = 0; // > 0 while rolling
     this.dodgeCd = 0;
@@ -78,6 +96,12 @@ export class Player {
       SCALING.minDodgeCd,
       PLAYER.dodgeCooldown * (1 - SCALING.finesseDodgeCd * this.stats.finesse)
     );
+  }
+  get bowDamage() {
+    return PLAYER.bowDamage * (1 + SCALING.finesseBowDamage * this.stats.finesse);
+  }
+  get spellDamage() {
+    return PLAYER.spellDamage * (1 + SCALING.focusSpellDamage * this.stats.focus);
   }
 
   get isDodging() {
@@ -116,11 +140,48 @@ export class Player {
   }
 
   // --- combat ---
+  cycleMode() {
+    const i = MODES.indexOf(this.mode);
+    this.mode = MODES[(i + 1) % MODES.length];
+  }
+
   tryAttack() {
     if (this.attackCd > 0 || this.isDodging) return;
     this.attackTimer = PLAYER.attackDuration;
     this.attackCd = this.attackCooldown;
     this.attackHitSet.clear();
+  }
+
+  // Returns projectile params or null if on cooldown / rolling.
+  tryShoot(angle) {
+    if (this.shootCd > 0 || this.isDodging) return null;
+    this.shootCd = PLAYER.bowCooldown;
+    return {
+      kind: "arrow",
+      x: this.x + Math.cos(angle) * (this.radius + 6),
+      y: this.y + Math.sin(angle) * (this.radius + 6),
+      angle,
+      speed: PLAYER.bowSpeed,
+      damage: this.bowDamage,
+      radius: 4,
+      friendly: true,
+    };
+  }
+
+  tryCast(angle) {
+    if (this.castCd > 0 || this.isDodging || this.mana < PLAYER.spellCost) return null;
+    this.castCd = PLAYER.spellCooldown;
+    this.mana -= PLAYER.spellCost;
+    return {
+      kind: "firebolt",
+      x: this.x + Math.cos(angle) * (this.radius + 6),
+      y: this.y + Math.sin(angle) * (this.radius + 6),
+      angle,
+      speed: PLAYER.spellSpeed,
+      damage: this.spellDamage,
+      radius: 6,
+      friendly: true,
+    };
   }
 
   tryDodge(moveX, moveY) {
@@ -143,9 +204,12 @@ export class Player {
     // Timers
     this.attackTimer = Math.max(0, this.attackTimer - dt);
     this.attackCd = Math.max(0, this.attackCd - dt);
+    this.shootCd = Math.max(0, this.shootCd - dt);
+    this.castCd = Math.max(0, this.castCd - dt);
     this.dodgeCd = Math.max(0, this.dodgeCd - dt);
     this.dodgeTimer = Math.max(0, this.dodgeTimer - dt);
     this.hurtTimer = Math.max(0, this.hurtTimer - dt);
+    this.mana = Math.min(PLAYER.manaMax, this.mana + PLAYER.manaRegen * dt);
 
     if (this.isDodging) {
       this.vx = this.dodgeDirX * PLAYER.dodgeSpeed;
@@ -198,49 +262,128 @@ export class Player {
   }
 }
 
-export const ENEMY = {
-  radius: 15,
-  speed: 92,
-  maxHealth: 100,
-  contactDamage: 1, // half-hearts
-  hitInterval: 0.55, // min seconds between damage ticks on the player
-  knockback: 260,
-  xp: 12,
-  goldMin: 4,
-  goldMax: 9,
-  heartDropChance: 0.15,
+// Enemy archetypes. `contactDamage` is in half-hearts.
+export const ENEMY_TYPES = {
+  // Walks straight at you. The baseline threat.
+  chaser: {
+    radius: 15,
+    speed: 92,
+    maxHealth: 100,
+    contactDamage: 1,
+    hitInterval: 0.55,
+    knockback: 260,
+    xp: 12,
+    goldMin: 4,
+    goldMax: 9,
+    heartDropChance: 0.15,
+    color: "#ff5470",
+  },
+  // Slow stalker that winds up (clear tell), then rushes in a locked line.
+  charger: {
+    radius: 17,
+    speed: 55,
+    maxHealth: 140,
+    contactDamage: 1,
+    chargeDamage: 2, // getting hit BY the charge costs a full heart
+    hitInterval: 0.6,
+    knockback: 170,
+    xp: 18,
+    goldMin: 7,
+    goldMax: 13,
+    heartDropChance: 0.2,
+    color: "#ff9a3d",
+    triggerRange: 170,
+    windupTime: 0.55,
+    chargeSpeed: 430,
+    chargeTime: 0.5,
+    recoverTime: 1.4,
+  },
+  // Keeps its distance and fires telegraphed arrows you can roll through.
+  archer: {
+    radius: 13,
+    speed: 78,
+    maxHealth: 70,
+    contactDamage: 1,
+    hitInterval: 0.6,
+    knockback: 300,
+    xp: 16,
+    goldMin: 6,
+    goldMax: 11,
+    heartDropChance: 0.15,
+    color: "#b06df5",
+    shootRange: 250,
+    fleeRange: 120,
+    drawTime: 0.45,
+    shootCooldown: 1.9,
+    arrowSpeed: 250,
+    arrowDamage: 1,
+  },
 };
 
 export class Enemy {
-  constructor(x, y) {
+  constructor(x, y, type = "chaser") {
+    this.type = type;
+    this.def = ENEMY_TYPES[type];
     this.x = x;
     this.y = y;
     this.vx = 0;
     this.vy = 0;
-    this.radius = ENEMY.radius;
-    this.health = ENEMY.maxHealth;
+    this.radius = this.def.radius;
+    this.health = this.def.maxHealth;
     this.hitCd = 0; // cooldown before it can damage the player again
     this.knockTimer = 0;
     this.knockX = 0;
     this.knockY = 0;
     this.flash = 0; // brief white flash when damaged
     this.alive = true;
+
+    // charger state machine: idle | windup | charging | recover
+    this.chargeState = "idle";
+    this.stateTimer = 0;
+    this.chargeDirX = 0;
+    this.chargeDirY = 0;
+
+    // archer state
+    this.shootTimer = 1 + Math.random(); // stagger first shots
+    this.drawTimer = 0;
   }
 
-  update(dt, player, map) {
+  get isCharging() {
+    return this.type === "charger" && this.chargeState === "charging";
+  }
+  get isWindup() {
+    return this.type === "charger" && this.chargeState === "windup";
+  }
+  get isDrawing() {
+    return this.type === "archer" && this.drawTimer > 0;
+  }
+  // Damage this enemy deals on contact right now.
+  get touchDamage() {
+    return this.isCharging ? this.def.chargeDamage : this.def.contactDamage;
+  }
+
+  update(dt, player, map, projectiles) {
     this.hitCd = Math.max(0, this.hitCd - dt);
     this.flash = Math.max(0, this.flash - dt);
     this.knockTimer = Math.max(0, this.knockTimer - dt);
 
+    const dx = player.x - this.x;
+    const dy = player.y - this.y;
+    const dist = Math.hypot(dx, dy) || 1;
+    const ux = dx / dist;
+    const uy = dy / dist;
+
     if (this.knockTimer > 0) {
       this.vx = this.knockX;
       this.vy = this.knockY;
+    } else if (this.type === "charger") {
+      this.updateCharger(dt, dist, ux, uy);
+    } else if (this.type === "archer") {
+      this.updateArcher(dt, player, dist, ux, uy, projectiles);
     } else {
-      const dx = player.x - this.x;
-      const dy = player.y - this.y;
-      const d = Math.hypot(dx, dy) || 1;
-      this.vx = (dx / d) * ENEMY.speed;
-      this.vy = (dy / d) * ENEMY.speed;
+      // chaser
+      this.vx = ux * this.def.speed;
+      this.vy = uy * this.def.speed;
     }
 
     const res = map.moveCircle(
@@ -258,16 +401,134 @@ export class Enemy {
     this.y = Math.max(this.radius, Math.min(LOGICAL_H - this.radius, this.y));
   }
 
+  updateCharger(dt, dist, ux, uy) {
+    const d = this.def;
+    this.stateTimer = Math.max(0, this.stateTimer - dt);
+
+    if (this.chargeState === "idle") {
+      this.vx = ux * d.speed;
+      this.vy = uy * d.speed;
+      if (dist < d.triggerRange) {
+        this.chargeState = "windup";
+        this.stateTimer = d.windupTime;
+        // Lock direction at the START of the windup so you can sidestep.
+        this.chargeDirX = ux;
+        this.chargeDirY = uy;
+        this.vx = 0;
+        this.vy = 0;
+      }
+    } else if (this.chargeState === "windup") {
+      this.vx = 0;
+      this.vy = 0;
+      if (this.stateTimer <= 0) {
+        this.chargeState = "charging";
+        this.stateTimer = d.chargeTime;
+      }
+    } else if (this.chargeState === "charging") {
+      this.vx = this.chargeDirX * d.chargeSpeed;
+      this.vy = this.chargeDirY * d.chargeSpeed;
+      if (this.stateTimer <= 0) {
+        this.chargeState = "recover";
+        this.stateTimer = d.recoverTime;
+      }
+    } else {
+      // recover: shuffle slowly toward the player until ready again
+      this.vx = ux * d.speed * 0.5;
+      this.vy = uy * d.speed * 0.5;
+      if (this.stateTimer <= 0) this.chargeState = "idle";
+    }
+  }
+
+  updateArcher(dt, player, dist, ux, uy, projectiles) {
+    const d = this.def;
+
+    if (this.drawTimer > 0) {
+      // Drawing the bow: stand still, then loose an arrow at the player.
+      this.vx = 0;
+      this.vy = 0;
+      this.drawTimer -= dt;
+      if (this.drawTimer <= 0 && projectiles) {
+        const angle = Math.atan2(player.y - this.y, player.x - this.x);
+        projectiles.push(
+          new Projectile({
+            kind: "enemy-arrow",
+            x: this.x + ux * (this.radius + 4),
+            y: this.y + uy * (this.radius + 4),
+            angle,
+            speed: d.arrowSpeed,
+            damage: d.arrowDamage,
+            radius: 4,
+            friendly: false,
+          })
+        );
+        this.shootTimer = d.shootCooldown;
+      }
+      return;
+    }
+
+    // Keep a comfortable band: flee if close, approach if far, else hold.
+    if (dist < d.fleeRange) {
+      this.vx = -ux * d.speed;
+      this.vy = -uy * d.speed;
+    } else if (dist > d.shootRange) {
+      this.vx = ux * d.speed;
+      this.vy = uy * d.speed;
+    } else {
+      this.vx = 0;
+      this.vy = 0;
+      this.shootTimer -= dt;
+      if (this.shootTimer <= 0) this.drawTimer = d.drawTime;
+    }
+  }
+
   takeDamage(amount, fromX, fromY) {
     this.health -= amount;
     this.flash = 0.12;
     const dx = this.x - fromX;
     const dy = this.y - fromY;
     const d = Math.hypot(dx, dy) || 1;
-    this.knockX = (dx / d) * ENEMY.knockback;
-    this.knockY = (dy / d) * ENEMY.knockback;
+    this.knockX = (d ? dx / d : 0) * this.def.knockback;
+    this.knockY = (d ? dy / d : 0) * this.def.knockback;
     this.knockTimer = 0.12;
+    // A solid hit knocks a charger out of its windup.
+    if (this.isWindup) {
+      this.chargeState = "recover";
+      this.stateTimer = 0.6;
+    }
     if (this.health <= 0) this.alive = false;
+  }
+}
+
+// A projectile in flight: player arrows/firebolts or enemy arrows.
+export class Projectile {
+  constructor({ kind, x, y, angle, speed, damage, radius, friendly, range = 420 }) {
+    this.kind = kind; // arrow | firebolt | enemy-arrow
+    this.x = x;
+    this.y = y;
+    this.angle = angle;
+    this.vx = Math.cos(angle) * speed;
+    this.vy = Math.sin(angle) * speed;
+    this.damage = damage;
+    this.radius = radius;
+    this.friendly = friendly;
+    this.range = range;
+    this.traveled = 0;
+    this.alive = true;
+  }
+
+  update(dt, map) {
+    const stepX = this.vx * dt;
+    const stepY = this.vy * dt;
+    this.x += stepX;
+    this.y += stepY;
+    this.traveled += Math.hypot(stepX, stepY);
+    if (this.traveled > this.range) this.alive = false;
+    // Walls and trees stop projectiles; they fly over water.
+    if (map.projectileBlocked(this.x, this.y, this.radius)) this.alive = false;
+    // Off the map entirely.
+    if (this.x < -20 || this.x > LOGICAL_W + 20 || this.y < -20 || this.y > LOGICAL_H + 20) {
+      this.alive = false;
+    }
   }
 }
 

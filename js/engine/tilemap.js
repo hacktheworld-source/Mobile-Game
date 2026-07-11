@@ -27,6 +27,8 @@ const CHAR_TILE = {
 };
 
 const BLOCKING = new Set([TILE.WALL, TILE.WATER, TILE.TREE]);
+// Projectiles fly over water but are stopped by walls and trees.
+const PROJ_BLOCKING = new Set([TILE.WALL, TILE.TREE]);
 
 // Shade variants per tile type, picked deterministically per-tile so the
 // ground doesn't look flat. (Shapes-now: sprites drop in here later.)
@@ -65,6 +67,15 @@ export class TileMap {
   // NOT blocking — border walls in the data contain you, and doorway gaps let
   // you walk off the edge to trigger a screen transition.
   circleBlocked(cx, cy, r) {
+    return this._blocked(cx, cy, r, BLOCKING);
+  }
+
+  // Walls and trees stop projectiles; water doesn't.
+  projectileBlocked(cx, cy, r) {
+    return this._blocked(cx, cy, r, PROJ_BLOCKING);
+  }
+
+  _blocked(cx, cy, r, blockSet) {
     const x0 = Math.floor((cx - r) / TILE_SIZE);
     const x1 = Math.floor((cx + r) / TILE_SIZE);
     const y0 = Math.floor((cy - r) / TILE_SIZE);
@@ -72,7 +83,7 @@ export class TileMap {
     for (let ty = y0; ty <= y1; ty++) {
       for (let tx = x0; tx <= x1; tx++) {
         if (tx < 0 || ty < 0 || tx >= GRID_W || ty >= GRID_H) continue;
-        if (!BLOCKING.has(this.tiles[ty * GRID_W + tx])) continue;
+        if (!blockSet.has(this.tiles[ty * GRID_W + tx])) continue;
         // Nearest point on the tile AABB to the circle center.
         const nx = Math.max(tx * TILE_SIZE, Math.min(cx, tx * TILE_SIZE + TILE_SIZE));
         const ny = Math.max(ty * TILE_SIZE, Math.min(cy, ty * TILE_SIZE + TILE_SIZE));

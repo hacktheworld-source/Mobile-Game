@@ -21,7 +21,7 @@ export const SCREENS = {
     name: "Dark Woods",
     enemies: [
       { x: 5, y: 4 },
-      { x: 8, y: 12 },
+      { x: 8, y: 12, type: "archer" },
       { x: 3, y: 17 },
     ],
     tiles: [
@@ -50,7 +50,7 @@ export const SCREENS = {
   "1,0": {
     name: "North Road",
     enemies: [
-      { x: 3, y: 5 },
+      { x: 3, y: 5, type: "charger" },
       { x: 8, y: 13 },
     ],
     tiles: [
@@ -79,9 +79,9 @@ export const SCREENS = {
   "2,0": {
     name: "Old Ruins",
     enemies: [
-      { x: 6, y: 4 },
+      { x: 6, y: 4, type: "archer" },
       { x: 3, y: 12 },
-      { x: 8, y: 15 },
+      { x: 8, y: 15, type: "archer" },
     ],
     tiles: [
       "############",
@@ -112,7 +112,7 @@ export const SCREENS = {
     name: "Westwood",
     enemies: [
       { x: 6, y: 6 },
-      { x: 4, y: 13 },
+      { x: 4, y: 13, type: "archer" },
     ],
     tiles: [
       "#####..#####",
@@ -167,9 +167,9 @@ export const SCREENS = {
   "2,1": {
     name: "East Fields",
     enemies: [
-      { x: 5, y: 5 },
+      { x: 5, y: 5, type: "charger" },
       { x: 8, y: 11 },
-      { x: 3, y: 16 },
+      { x: 3, y: 16, type: "charger" },
     ],
     tiles: [
       "#####..#####",
@@ -199,7 +199,7 @@ export const SCREENS = {
   "0,2": {
     name: "Riverbank",
     enemies: [
-      { x: 7, y: 6 },
+      { x: 7, y: 6, type: "archer" },
       { x: 6, y: 12 },
     ],
     tiles: [
@@ -229,7 +229,7 @@ export const SCREENS = {
     name: "South Path",
     enemies: [
       { x: 8, y: 4 },
-      { x: 3, y: 15 },
+      { x: 3, y: 15, type: "charger" },
     ],
     tiles: [
       "#####..#####",
@@ -258,8 +258,8 @@ export const SCREENS = {
     name: "Forgotten Shore",
     enemies: [
       { x: 3, y: 5 },
-      { x: 2, y: 14 },
-      { x: 7, y: 17 },
+      { x: 2, y: 14, type: "archer" },
+      { x: 7, y: 17, type: "charger" },
     ],
     tiles: [
       "#####..#####",

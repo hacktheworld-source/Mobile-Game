@@ -4,7 +4,7 @@
 // All gameplay happens in a fixed logical space (LOGICAL_W x LOGICAL_H) that
 // is scaled and letterboxed to the device in render().
 
-import { Player, Enemy, Pickup, PLAYER, ENEMY } from "./entities.js";
+import { Player, Enemy, Pickup, Projectile, PLAYER } from "./entities.js";
 import { Input, consumeActions } from "./input.js";
 import { TileMap, TILE_SIZE, LOGICAL_W, LOGICAL_H } from "./engine/tilemap.js";
 import { writeSave } from "./engine/save.js";
@@ -47,6 +47,7 @@ export class Game {
     this.player = null;
     this.enemies = [];
     this.pickups = [];
+    this.projectiles = [];
     this.pouch = null; // { screenId, x, y, amount } — dropped gold on death
     this.kills = 0;
 
@@ -96,6 +97,7 @@ export class Game {
     this.player.hp = Math.min(save.hp ?? this.player.maxHp, this.player.maxHp);
     this.kills = save.kills || 0;
     this.pouch = save.pouch || null;
+    this.player.mode = save.mode || "sword";
     const id = SCREENS[save.screenId] ? save.screenId : HOME_ID;
     this.enterScreen(id);
     this.state = "playing";
@@ -119,8 +121,9 @@ export class Game {
     // Enemies and loose loot are transient; enemies respawn on re-entry.
     this.enemies = screen.safe
       ? []
-      : screen.enemies.map((e) => new Enemy(tileCenter(e.x), tileCenter(e.y)));
+      : screen.enemies.map((e) => new Enemy(tileCenter(e.x), tileCenter(e.y), e.type || "chaser"));
     this.pickups = [];
+    this.projectiles = [];
     // Don't carry a mid-swing/mid-roll into a new screen.
     if (this.player) {
       this.player.attackTimer = 0;
@@ -146,6 +149,7 @@ export class Game {
       gold: p.gold,
       kills: this.kills,
       pouch: this.pouch,
+      mode: p.mode,
     };
   }
 
@@ -174,6 +178,12 @@ export class Game {
     return false;
   }
 
+  cycleMode() {
+    if (!this.player || this.state === "dead") return;
+    this.player.cycleMode();
+    this.updateHud();
+  }
+
   // ---------- update ----------
 
   update(dt) {
@@ -185,7 +195,16 @@ export class Game {
   updatePlaying(dt) {
     this.bannerTimer = Math.max(0, this.bannerTimer - dt);
 
-    if (Input.attackPressed) this.player.tryAttack();
+    if (Input.attackPressed) {
+      const p = this.player;
+      if (p.mode === "sword") {
+        p.tryAttack();
+      } else {
+        const angle = this.autoAimAngle();
+        const shot = p.mode === "bow" ? p.tryShoot(angle) : p.tryCast(angle);
+        if (shot) this.projectiles.push(new Projectile(shot));
+      }
+    }
     if (Input.dodgePressed) this.player.tryDodge(Input.moveX, Input.moveY);
     consumeActions();
 
@@ -205,7 +224,7 @@ export class Game {
     }
 
     for (const e of this.enemies) {
-      e.update(dt, this.player, this.map);
+      e.update(dt, this.player, this.map, this.projectiles);
 
       if (this.player.isAttacking && !this.player.attackHitSet.has(e)) {
         if (this.player.hitsPoint(e.x, e.y)) {
@@ -217,8 +236,8 @@ export class Game {
 
       const dist = Math.hypot(e.x - this.player.x, e.y - this.player.y);
       if (dist < e.radius + this.player.radius && e.hitCd <= 0) {
-        if (this.player.takeDamage(ENEMY.contactDamage)) {
-          e.hitCd = ENEMY.hitInterval;
+        if (this.player.takeDamage(e.touchDamage)) {
+          e.hitCd = e.def.hitInterval;
         }
       }
     }
@@ -226,6 +245,7 @@ export class Game {
     this.separateEnemies();
     this.enemies = this.enemies.filter((e) => e.alive);
 
+    this.updateProjectiles(dt);
     this.updatePickups(dt);
 
     if (!this.player.alive) {
@@ -244,12 +264,62 @@ export class Game {
 
   onEnemyKilled(e) {
     this.kills += 1;
-    this.player.gainXP(ENEMY.xp);
-    const gold = ENEMY.goldMin + Math.floor(Math.random() * (ENEMY.goldMax - ENEMY.goldMin + 1));
+    this.player.gainXP(e.def.xp);
+    const gold =
+      e.def.goldMin + Math.floor(Math.random() * (e.def.goldMax - e.def.goldMin + 1));
     this.pickups.push(new Pickup("gold", e.x, e.y, gold));
-    if (Math.random() < ENEMY.heartDropChance) {
+    if (Math.random() < e.def.heartDropChance) {
       this.pickups.push(new Pickup("heart", e.x + 14, e.y - 8));
     }
+  }
+
+  // Soft aim assist for projectiles: snap to the best enemy within a cone of
+  // the facing direction; otherwise fire straight ahead.
+  autoAimAngle() {
+    const p = this.player;
+    let best = null;
+    let bestScore = Infinity;
+    for (const e of this.enemies) {
+      const dx = e.x - p.x;
+      const dy = e.y - p.y;
+      const dist = Math.hypot(dx, dy);
+      if (dist > 280) continue;
+      let diff = Math.atan2(dy, dx) - p.facing;
+      while (diff > Math.PI) diff -= Math.PI * 2;
+      while (diff < -Math.PI) diff += Math.PI * 2;
+      if (Math.abs(diff) > 0.65) continue; // ~37° either side
+      const score = Math.abs(diff) * 100 + dist * 0.2;
+      if (score < bestScore) {
+        bestScore = score;
+        best = e;
+      }
+    }
+    return best ? Math.atan2(best.y - p.y, best.x - p.x) : p.facing;
+  }
+
+  updateProjectiles(dt) {
+    const p = this.player;
+    for (const pr of this.projectiles) {
+      pr.update(dt, this.map);
+      if (!pr.alive) continue;
+
+      if (pr.friendly) {
+        for (const e of this.enemies) {
+          if (!e.alive) continue;
+          if (Math.hypot(e.x - pr.x, e.y - pr.y) < e.radius + pr.radius) {
+            e.takeDamage(pr.damage, pr.x - Math.cos(pr.angle) * 20, pr.y - Math.sin(pr.angle) * 20);
+            if (!e.alive) this.onEnemyKilled(e);
+            pr.alive = false;
+            break;
+          }
+        }
+      } else if (Math.hypot(p.x - pr.x, p.y - pr.y) < p.radius + pr.radius) {
+        // Dodge-rolling through an enemy arrow lets it pass clean through.
+        if (p.takeDamage(pr.damage)) pr.alive = false;
+      }
+    }
+    this.enemies = this.enemies.filter((e) => e.alive);
+    this.projectiles = this.projectiles.filter((pr) => pr.alive);
   }
 
   updatePickups(dt) {
@@ -389,7 +459,20 @@ export class Game {
     this.hud.levelupBtn.classList.toggle("hidden", p.points === 0 || this.state === "dead");
     if (p.points > 0) this.hud.levelupBtn.textContent = `LEVEL UP ＋${p.points}`;
 
-    this.hud.attackBtn.classList.toggle("cooling", p.attackCd > 0);
+    // Mana bar + weapon mode button.
+    this.hud.manaFill.style.width = (p.mana / PLAYER.manaMax) * 100 + "%";
+    const modeLabels = { sword: "SWORD", bow: "BOW", spell: "FIRE" };
+    this.hud.modeBtn.textContent = modeLabels[p.mode];
+    this.hud.modeBtn.dataset.mode = p.mode;
+
+    // The ATK button reflects the ACTIVE mode's readiness.
+    const atkCooling =
+      p.mode === "sword"
+        ? p.attackCd > 0
+        : p.mode === "bow"
+          ? p.shootCd > 0
+          : p.castCd > 0 || p.mana < PLAYER.spellCost;
+    this.hud.attackBtn.classList.toggle("cooling", atkCooling);
     this.hud.dodgeBtn.classList.toggle("cooling", p.dodgeCd > 0);
 
     if (this.onHudChange) this.onHudChange();
@@ -417,24 +500,71 @@ export class Game {
 
     this.renderPickups(ctx);
     this.renderPouch(ctx);
+    this.renderEnemies(ctx);
+    this.renderProjectiles(ctx);
+    this.renderPlayer(ctx);
+    this.renderBanner(ctx);
+    this.renderTransition(ctx);
+  }
 
+  renderEnemies(ctx) {
     for (const e of this.enemies) {
-      ctx.fillStyle = e.flash > 0 ? COLORS.enemyFlash : COLORS.enemy;
+      // Archer aiming: a faint line telegraphs the incoming shot.
+      if (e.isDrawing) {
+        ctx.strokeStyle = "rgba(176,109,245,0.35)";
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(e.x, e.y);
+        ctx.lineTo(this.player.x, this.player.y);
+        ctx.stroke();
+      }
+
+      // Charger windup: rapid blink + swelling outline reads as "get out of the way".
+      let body = e.flash > 0 ? COLORS.enemyFlash : e.def.color;
+      if (e.isWindup && Math.floor(this.time * 12) % 2 === 0) body = "#ffffff";
+      ctx.fillStyle = body;
       ctx.beginPath();
       ctx.arc(e.x, e.y, e.radius, 0, Math.PI * 2);
       ctx.fill();
-      if (e.health < ENEMY.maxHealth) {
+      if (e.isWindup || e.isCharging) {
+        ctx.strokeStyle = e.def.color;
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.arc(e.x, e.y, e.radius + 4, 0, Math.PI * 2);
+        ctx.stroke();
+      }
+
+      if (e.health < e.def.maxHealth) {
         const w = e.radius * 2;
         ctx.fillStyle = "rgba(0,0,0,0.5)";
         ctx.fillRect(e.x - e.radius, e.y - e.radius - 8, w, 3);
         ctx.fillStyle = "#ffd166";
-        ctx.fillRect(e.x - e.radius, e.y - e.radius - 8, w * (e.health / ENEMY.maxHealth), 3);
+        ctx.fillRect(e.x - e.radius, e.y - e.radius - 8, w * (e.health / e.def.maxHealth), 3);
       }
     }
+  }
 
-    this.renderPlayer(ctx);
-    this.renderBanner(ctx);
-    this.renderTransition(ctx);
+  renderProjectiles(ctx) {
+    for (const pr of this.projectiles) {
+      if (pr.kind === "firebolt") {
+        ctx.save();
+        ctx.shadowColor = "#ff9a3d";
+        ctx.shadowBlur = 12;
+        ctx.fillStyle = "#ffb35c";
+        ctx.beginPath();
+        ctx.arc(pr.x, pr.y, pr.radius, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+      } else {
+        // Arrows: a short line in the direction of travel.
+        ctx.strokeStyle = pr.friendly ? "#e8ecf5" : "#b06df5";
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.moveTo(pr.x - Math.cos(pr.angle) * 8, pr.y - Math.sin(pr.angle) * 8);
+        ctx.lineTo(pr.x + Math.cos(pr.angle) * 8, pr.y + Math.sin(pr.angle) * 8);
+        ctx.stroke();
+      }
+    }
   }
 
   renderPickups(ctx) {

@@ -14,8 +14,10 @@ const hud = {
   statusEl: document.getElementById("status"),
   heartsEl: document.getElementById("hearts"),
   xpFill: document.getElementById("xp-fill"),
+  manaFill: document.getElementById("mana-fill"),
   attackBtn: document.getElementById("btn-attack"),
   dodgeBtn: document.getElementById("btn-dodge"),
+  modeBtn: document.getElementById("btn-mode"),
   levelupBtn: document.getElementById("levelup-btn"),
 };
 
@@ -134,11 +136,35 @@ function closeSheet() {
 hud.levelupBtn.addEventListener("click", openSheet);
 sheetClose.addEventListener("click", closeSheet);
 
-// Desktop convenience: C toggles the character sheet.
+// Weapon mode switching: tap the mode button (or Q / 1 / 2 / 3 on desktop).
+hud.modeBtn.addEventListener(
+  "touchstart",
+  (e) => {
+    e.preventDefault();
+    game.cycleMode();
+  },
+  { passive: false }
+);
+hud.modeBtn.addEventListener("mousedown", (e) => {
+  e.preventDefault();
+  game.cycleMode();
+});
+
+// Desktop convenience: C toggles the character sheet; Q/1/2/3 switch weapons.
 window.addEventListener("keydown", (e) => {
-  if (e.key.toLowerCase() !== "c") return;
-  if (game.state === "paused") closeSheet();
-  else openSheet();
+  const k = e.key.toLowerCase();
+  if (k === "c") {
+    if (game.state === "paused") closeSheet();
+    else openSheet();
+    return;
+  }
+  if (!game.player) return;
+  if (k === "q") game.cycleMode();
+  else if (k === "1") game.player.mode = "sword";
+  else if (k === "2") game.player.mode = "bow";
+  else if (k === "3") game.player.mode = "spell";
+  else return;
+  game.updateHud();
 });
 
 showTitle();

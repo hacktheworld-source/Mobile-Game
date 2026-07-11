@@ -15,13 +15,16 @@ recoverable death pouch (Phase 2).
 
 **Touch (phone)**
 - **Left thumb** — floating virtual joystick (touch anywhere on the left side to move)
-- **ATK** button — melee swing (a cone in your facing direction, with a cooldown)
-- **DODGE** button — dodge roll: a quick burst with brief invincibility (i-frames)
+- **ATK** button — use the equipped weapon (sword swing / bow shot / firebolt)
+- **SWORD/BOW/FIRE** button — cycle weapon modes; the bow scales with Finesse,
+  the firebolt with Focus (costs mana, which regenerates)
+- **DODGE** button — dodge roll: a quick burst with brief invincibility
+  (you can roll through enemy arrows)
 
 **Desktop (for testing)**
 - **WASD / arrows** — move
-- **J / Space** — attack
-- **K / Shift** — dodge
+- **J / Space** — attack · **K / Shift** — dodge
+- **Q** cycle weapon · **1/2/3** pick weapon · **C** character sheet
 
 You face the direction you're moving; the swing lands in front of you. Walk
 off a screen's edge (through gaps in the walls) to travel to the next screen.
@@ -78,6 +81,7 @@ console. Gameplay tuning lives in the `PLAYER` and `ENEMY` constant blocks in
 ## Roadmap
 
 See [`docs/GAME_PLAN.md`](docs/GAME_PLAN.md) for the full 8-phase plan.
-**Done:** Phase 1 (world & movement foundation) and Phase 2 (hearts,
-attributes, XP levels, gold, recoverable death pouch).
-**Next:** Phase 3 — ranged weapon, magic, and more enemy types.
+**Done:** Phase 1 (world & movement), Phase 2 (hearts, attributes, XP, gold,
+death pouch), Phase 3 (bow + firebolt + mana, weapon switching, charger and
+archer enemies with tells).
+**Next:** Phase 4 — gear, inventory, loot chests, and the Emberfall shop.

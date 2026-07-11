@@ -92,6 +92,10 @@ canvas#game {
   background: linear-gradient(90deg, #2f8f6d, var(--accent));
 }
 
+.hud-bar-fill.mana {
+  background: linear-gradient(90deg, #2d5f9e, var(--dodge));
+}
+
 /* ---------- Hearts ---------- */
 #hearts {
   display: flex;
@@ -309,6 +313,25 @@ canvas#game {
   margin-bottom: 14px;
   background: radial-gradient(circle at 35% 30%, #a7d0ff, var(--dodge));
   box-shadow: 0 6px 18px rgba(90, 169, 255, 0.35);
+}
+
+.action-btn.mode {
+  width: 58px;
+  height: 58px;
+  margin-bottom: 34px;
+  font-size: 11px;
+  background: #2a3146;
+  border: 2px solid rgba(255, 255, 255, 0.2);
+  color: var(--ink);
+}
+
+.action-btn.mode[data-mode="bow"] {
+  border-color: rgba(232, 236, 245, 0.55);
+}
+
+.action-btn.mode[data-mode="spell"] {
+  border-color: rgba(255, 154, 61, 0.75);
+  color: #ffb35c;
 }
 
 .action-btn.cooling {
