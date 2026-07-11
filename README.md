@@ -66,6 +66,7 @@ js/engine/save.js     localStorage save/load (versioned, with migration)
 js/world/world.js     the screen graph (neighbors by direction)
 js/world/screens.js   DATA: hand-authored screens (tiles, spawns, safety)
 js/rpg/stats.js       attributes, per-point scaling, XP curve
+js/rpg/items.js       item catalog: weapons, armor, charms, shop stock
 ```
 
 The game runs in a fixed logical space (12×20 tiles of 32px) scaled to fit any
@@ -83,5 +84,6 @@ console. Gameplay tuning lives in the `PLAYER` and `ENEMY` constant blocks in
 See [`docs/GAME_PLAN.md`](docs/GAME_PLAN.md) for the full 8-phase plan.
 **Done:** Phase 1 (world & movement), Phase 2 (hearts, attributes, XP, gold,
 death pouch), Phase 3 (bow + firebolt + mana, weapon switching, charger and
-archer enemies with tells).
-**Next:** Phase 4 — gear, inventory, loot chests, and the Emberfall shop.
+archer enemies), Phase 4 (gear & inventory: 16 items in 5 slots, the
+Emberfall shop, persistent treasure chests, STATS/GEAR sheet tabs).
+**Next:** Phase 5 — skill trees and perks.

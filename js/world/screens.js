@@ -9,6 +9,10 @@
 //
 // enemies: tile coordinates (must be walkable). Enemies are transient — they
 // respawn every time you enter the screen. `safe: true` screens spawn none.
+//
+// chests: persistent one-time loot ({ id, x, y, gold } or { id, x, y, item }).
+// Opened chests are remembered in the save's flags as "chest:<id>".
+// shop: { x, y } marks the merchant stall (walk up to it to browse).
 
 import { GRID_W, GRID_H } from "../engine/tilemap.js";
 
@@ -19,6 +23,7 @@ export const SCREENS = {
   // ---------- row 0 (north) ----------
   "0,0": {
     name: "Dark Woods",
+    chests: [{ id: "woods_gold", x: 10, y: 17, gold: 40 }],
     enemies: [
       { x: 5, y: 4 },
       { x: 8, y: 12, type: "archer" },
@@ -78,6 +83,7 @@ export const SCREENS = {
   },
   "2,0": {
     name: "Old Ruins",
+    chests: [{ id: "ruins_jerkin", x: 9, y: 3, item: "leather_jerkin" }],
     enemies: [
       { x: 6, y: 4, type: "archer" },
       { x: 3, y: 12 },
@@ -141,6 +147,7 @@ export const SCREENS = {
     name: "Emberfall",
     safe: true,
     enemies: [],
+    shop: { x: 2, y: 4 },
     tiles: [
       "#####..#####",
       "#....--....#",
@@ -198,6 +205,7 @@ export const SCREENS = {
   // ---------- row 2 (south) ----------
   "0,2": {
     name: "Riverbank",
+    chests: [{ id: "river_gold", x: 10, y: 13, gold: 60 }],
     enemies: [
       { x: 7, y: 6, type: "archer" },
       { x: 6, y: 12 },
@@ -256,6 +264,7 @@ export const SCREENS = {
   },
   "2,2": {
     name: "Forgotten Shore",
+    chests: [{ id: "shore_charm", x: 9, y: 16, item: "mana_charm" }],
     enemies: [
       { x: 3, y: 5 },
       { x: 2, y: 14, type: "archer" },

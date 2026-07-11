@@ -280,5 +280,15 @@ controller) and `js/main.js` (scene/boot + Continue/New Game); extend
   during windup cancels it) and the archer (keeps distance, aim-line
   telegraph, arrows you can dodge-roll through). Enemy types are authored
   per-screen; weapon mode persists in the save.
-- ⏭️ **Next:** Phase 4 — Gear & inventory (equipment, loot, chests, the
-  Emberfall shop, first item-gating tools).
+- ✅ **Phase 4 — Gear & inventory.** Item catalog (`js/rpg/items.js`) with 16
+  items across five slots (sword/bow/catalyst/armor/charm); weapon damage now
+  comes from equipped gear, armor adds hearts, charms give passives (+speed,
+  +mana regen, +XP, +gold). The Emberfall merchant stall auto-opens a shop
+  panel when you walk up (with a step-away latch); four persistent chests
+  hide gold and items around the world, remembered via save flags. Character
+  sheet gained STATS/GEAR tabs and a top-left menu button; new gear
+  auto-equips into empty slots. Save v3 (inventory/equipment/flags) with the
+  full v1→v2→v3 migration chain. _Item-gating tools (keys etc.) deferred to
+  Phase 6 dungeons where the locks live._
+- ⏭️ **Next:** Phase 5 — Skill trees / perks (active abilities + passives per
+  pillar, point spending UI).

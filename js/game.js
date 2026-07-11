@@ -11,6 +11,7 @@ import { writeSave } from "./engine/save.js";
 import { World } from "./world/world.js";
 import { SCREENS, HOME_ID, HOME_SPAWN } from "./world/screens.js";
 import { xpNeeded } from "./rpg/stats.js";
+import { ITEMS } from "./rpg/items.js";
 
 const COLORS = {
   page: "#0e1016",
@@ -50,6 +51,9 @@ export class Game {
     this.projectiles = [];
     this.pouch = null; // { screenId, x, y, amount } — dropped gold on death
     this.kills = 0;
+    this.flags = {}; // durable world state: opened chests, future quest flags
+    this.shopLatch = false; // don't reopen the shop until you step away
+    this.onShopOpen = null;
 
     this.time = 0;
     this.bannerText = "";
@@ -82,6 +86,7 @@ export class Game {
     this.player = new Player(tileCenter(HOME_SPAWN.x), tileCenter(HOME_SPAWN.y));
     this.kills = 0;
     this.pouch = null;
+    this.flags = {};
     this.enterScreen(HOME_ID);
     this.state = "playing";
     this.saveNow();
@@ -94,10 +99,14 @@ export class Game {
     this.player.xp = save.xp || 0;
     this.player.points = save.points || 0;
     this.player.gold = save.gold || 0;
-    this.player.hp = Math.min(save.hp ?? this.player.maxHp, this.player.maxHp);
     this.kills = save.kills || 0;
     this.pouch = save.pouch || null;
     this.player.mode = save.mode || "sword";
+    if (save.inventory) this.player.inventory = [...save.inventory];
+    if (save.equipment) this.player.equipment = { ...this.player.equipment, ...save.equipment };
+    this.flags = save.flags || {};
+    // Set hp only after gear is on — armor hearts count toward the cap.
+    this.player.hp = Math.min(save.hp ?? this.player.maxHp, this.player.maxHp);
     const id = SCREENS[save.screenId] ? save.screenId : HOME_ID;
     this.enterScreen(id);
     this.state = "playing";
@@ -137,7 +146,7 @@ export class Game {
   buildSave() {
     const p = this.player;
     return {
-      v: 2,
+      v: 3,
       screenId: this.world.currentId,
       x: p.x,
       y: p.y,
@@ -150,6 +159,9 @@ export class Game {
       kills: this.kills,
       pouch: this.pouch,
       mode: p.mode,
+      inventory: [...p.inventory],
+      equipment: { ...p.equipment },
+      flags: { ...this.flags },
     };
   }
 
@@ -182,6 +194,40 @@ export class Game {
     if (!this.player || this.state === "dead") return;
     this.player.cycleMode();
     this.updateHud();
+  }
+
+  // ---------- shop & gear ----------
+
+  openShop() {
+    if (this.state !== "playing") return false;
+    this.state = "paused";
+    this.shopLatch = true;
+    return true;
+  }
+
+  closeShop() {
+    if (this.state === "paused") this.state = "playing";
+  }
+
+  buyItem(id) {
+    const p = this.player;
+    const it = ITEMS[id];
+    if (!it || p.ownsItem(id) || p.gold < it.price) return false;
+    p.gold -= it.price;
+    p.inventory.push(id);
+    if (!p.equipment[it.slot]) p.equip(id); // empty slot? wear it out of the store
+    this.updateHud();
+    this.saveNow();
+    return true;
+  }
+
+  equipItem(id) {
+    if (this.player.equip(id)) {
+      this.updateHud();
+      this.saveNow();
+      return true;
+    }
+    return false;
   }
 
   // ---------- update ----------
@@ -247,6 +293,7 @@ export class Game {
 
     this.updateProjectiles(dt);
     this.updatePickups(dt);
+    this.updateChestsAndShop();
 
     if (!this.player.alive) {
       this.die();
@@ -265,8 +312,9 @@ export class Game {
   onEnemyKilled(e) {
     this.kills += 1;
     this.player.gainXP(e.def.xp);
-    const gold =
+    let gold =
       e.def.goldMin + Math.floor(Math.random() * (e.def.goldMax - e.def.goldMin + 1));
+    gold = Math.round(gold * (1 + this.player.gearStat("goldPct") / 100));
     this.pickups.push(new Pickup("gold", e.x, e.y, gold));
     if (Math.random() < e.def.heartDropChance) {
       this.pickups.push(new Pickup("heart", e.x + 14, e.y - 8));
@@ -342,6 +390,38 @@ export class Game {
         this.bannerText = "GOLD RECLAIMED";
         this.bannerTimer = 1.2;
         this.saveNow();
+      }
+    }
+  }
+
+  updateChestsAndShop() {
+    const screen = this.world.current;
+    const p = this.player;
+
+    for (const chest of screen.chests || []) {
+      const key = `chest:${chest.id}`;
+      if (this.flags[key]) continue;
+      if (Math.hypot(tileCenter(chest.x) - p.x, tileCenter(chest.y) - p.y) < p.radius + 20) {
+        this.flags[key] = true;
+        if (chest.gold) {
+          p.gold += chest.gold;
+          this.bannerText = `+${chest.gold} GOLD`;
+        } else if (chest.item && !p.ownsItem(chest.item)) {
+          p.inventory.push(chest.item);
+          if (!p.equipment[ITEMS[chest.item].slot]) p.equip(chest.item);
+          this.bannerText = ITEMS[chest.item].name.toUpperCase() + "!";
+        }
+        this.bannerTimer = 1.6;
+        this.saveNow();
+      }
+    }
+
+    if (screen.shop) {
+      const d = Math.hypot(tileCenter(screen.shop.x) - p.x, tileCenter(screen.shop.y) - p.y);
+      if (d < 46 && !this.shopLatch) {
+        if (this.onShopOpen && this.openShop()) this.onShopOpen();
+      } else if (d > 70) {
+        this.shopLatch = false; // stepped away; the stall will greet you again
       }
     }
   }
@@ -498,6 +578,7 @@ export class Game {
 
     if (this.state === "menu") return;
 
+    this.renderChestsAndShop(ctx);
     this.renderPickups(ctx);
     this.renderPouch(ctx);
     this.renderEnemies(ctx);
@@ -505,6 +586,46 @@ export class Game {
     this.renderPlayer(ctx);
     this.renderBanner(ctx);
     this.renderTransition(ctx);
+  }
+
+  renderChestsAndShop(ctx) {
+    const screen = this.world.current;
+
+    for (const chest of screen.chests || []) {
+      const cx = tileCenter(chest.x);
+      const cy = tileCenter(chest.y);
+      const opened = this.flags[`chest:${chest.id}`];
+      ctx.fillStyle = opened ? "#3a3226" : "#6b5230";
+      ctx.fillRect(cx - 11, cy - 9, 22, 18);
+      ctx.strokeStyle = opened ? "#4a4234" : "#ffd166";
+      ctx.lineWidth = 2;
+      ctx.strokeRect(cx - 11, cy - 9, 22, 18);
+      if (!opened) {
+        ctx.fillStyle = "#ffd166";
+        ctx.fillRect(cx - 2, cy - 9, 4, 8); // clasp
+      }
+    }
+
+    if (screen.shop) {
+      const sx = tileCenter(screen.shop.x);
+      const sy = tileCenter(screen.shop.y);
+      const pulse = 0.5 + 0.5 * Math.sin(this.time * 3);
+      // Stall: counter + striped awning.
+      ctx.fillStyle = "#5a4630";
+      ctx.fillRect(sx - 14, sy - 6, 28, 14);
+      ctx.fillStyle = "#c8553d";
+      ctx.fillRect(sx - 16, sy - 14, 32, 7);
+      ctx.fillStyle = "#e8ecf5";
+      ctx.fillRect(sx - 16 + 8, sy - 14, 8, 7);
+      ctx.fillRect(sx - 16 + 24, sy - 14, 8, 7);
+      ctx.save();
+      ctx.globalAlpha = 0.5 + 0.5 * pulse;
+      ctx.fillStyle = "#ffd166";
+      ctx.font = "800 11px sans-serif";
+      ctx.textAlign = "center";
+      ctx.fillText("SHOP", sx, sy + 22);
+      ctx.restore();
+    }
   }
 
   renderEnemies(ctx) {

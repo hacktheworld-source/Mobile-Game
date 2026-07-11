@@ -2,7 +2,10 @@
 // coordinate space, so it's resolution-independent.
 //
 // v1: pre-RPG (numeric 0-100 health). v2: hearts, attributes, XP, gold, pouch.
+// v3: inventory, equipment, world flags (opened chests etc).
 // Old saves are migrated forward on load.
+
+import { STARTING_EQUIPMENT, STARTING_INVENTORY } from "../rpg/items.js";
 
 const KEY = "emberfall.save.v1";
 
@@ -19,11 +22,10 @@ export function loadSave() {
 }
 
 function migrate(data) {
-  if (data.v === 2) return data;
   if (data.v === 1) {
     // v1 had health 0..100 and 3 hearts didn't exist yet -> map onto 3 hearts.
     const hp = Math.max(1, Math.min(6, Math.round(((data.health ?? 100) / 100) * 6)));
-    return {
+    data = {
       v: 2,
       screenId: data.screenId,
       x: data.x,
@@ -38,6 +40,16 @@ function migrate(data) {
       pouch: null,
     };
   }
+  if (data.v === 2) {
+    data = {
+      ...data,
+      v: 3,
+      inventory: [...STARTING_INVENTORY],
+      equipment: { ...STARTING_EQUIPMENT },
+      flags: {},
+    };
+  }
+  if (data.v === 3) return data;
   return null;
 }
 

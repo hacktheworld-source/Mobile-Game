@@ -5,6 +5,7 @@
 
 import { LOGICAL_W, LOGICAL_H } from "./engine/tilemap.js";
 import { BASE_HEARTS, POINTS_PER_LEVEL, SCALING, xpNeeded } from "./rpg/stats.js";
+import { ITEMS, STARTING_EQUIPMENT, STARTING_INVENTORY } from "./rpg/items.js";
 
 export const PLAYER = {
   radius: 18,
@@ -52,6 +53,8 @@ export class Player {
     this.points = 0;
     this.gold = 0;
     this.bonusHearts = 0; // future: heart containers found in the world
+    this.inventory = [...STARTING_INVENTORY];
+    this.equipment = { ...STARTING_EQUIPMENT };
     this.hp = this.maxHp; // half-hearts
 
     this.mode = "sword"; // sword | bow | spell
@@ -72,18 +75,46 @@ export class Player {
     this.alive = true;
   }
 
-  // --- derived stats (attributes scale the PLAYER base constants) ---
+  // --- gear helpers ---
+  equippedItem(slot) {
+    return ITEMS[this.equipment[slot]] || null;
+  }
+  gearStat(key) {
+    let sum = 0;
+    for (const id of Object.values(this.equipment)) {
+      const it = ITEMS[id];
+      if (it && it.stats[key]) sum += it.stats[key];
+    }
+    return sum;
+  }
+  ownsItem(id) {
+    return this.inventory.includes(id);
+  }
+  equip(id) {
+    const it = ITEMS[id];
+    if (!it || !this.ownsItem(id)) return false;
+    this.equipment[it.slot] = id;
+    this.hp = Math.min(this.hp, this.maxHp); // armor swap can shrink max hearts
+    return true;
+  }
+
+  // --- derived stats (attributes + gear scale the base constants) ---
   get maxHearts() {
-    return BASE_HEARTS + this.stats.vitality + this.bonusHearts;
+    return BASE_HEARTS + this.stats.vitality + this.bonusHearts + this.gearStat("hearts");
   }
   get maxHp() {
     return this.maxHearts * 2;
   }
   get speed() {
-    return PLAYER.speed * (1 + SCALING.finesseSpeed * this.stats.finesse);
+    return (
+      PLAYER.speed *
+      (1 + SCALING.finesseSpeed * this.stats.finesse) *
+      (1 + this.gearStat("speedPct") / 100)
+    );
   }
   get damage() {
-    return PLAYER.attackDamage * (1 + SCALING.mightDamage * this.stats.might);
+    const base = this.equippedItem("melee")?.stats.damage ?? PLAYER.attackDamage;
+    return base * (1 + SCALING.mightDamage * this.stats.might);
   }
   get attackCooldown() {
     return Math.max(
@@ -98,10 +129,15 @@ export class Player {
     );
   }
   get bowDamage() {
-    return PLAYER.bowDamage * (1 + SCALING.finesseBowDamage * this.stats.finesse);
+    const base = this.equippedItem("bow")?.stats.damage ?? PLAYER.bowDamage;
+    return base * (1 + SCALING.finesseBowDamage * this.stats.finesse);
   }
   get spellDamage() {
-    return PLAYER.spellDamage * (1 + SCALING.focusSpellDamage * this.stats.focus);
+    const base = this.equippedItem("spell")?.stats.damage ?? PLAYER.spellDamage;
+    return base * (1 + SCALING.focusSpellDamage * this.stats.focus);
+  }
+  get manaRegen() {
+    return PLAYER.manaRegen * (1 + this.gearStat("manaRegenPct") / 100);
   }
 
   get isDodging() {
@@ -116,7 +152,7 @@ export class Player {
 
   // --- progression ---
   gainXP(amount) {
-    this.xp += amount;
+    this.xp += Math.round(amount * (1 + this.gearStat("xpPct") / 100));
     let leveled = false;
     while (this.xp >= xpNeeded(this.level)) {
       this.xp -= xpNeeded(this.level);
@@ -209,7 +245,7 @@ export class Player {
     this.dodgeCd = Math.max(0, this.dodgeCd - dt);
     this.dodgeTimer = Math.max(0, this.dodgeTimer - dt);
     this.hurtTimer = Math.max(0, this.hurtTimer - dt);
-    this.mana = Math.min(PLAYER.manaMax, this.mana + PLAYER.manaRegen * dt);
+    this.mana = Math.min(PLAYER.manaMax, this.mana + this.manaRegen * dt);
 
     if (this.isDodging) {
       this.vx = this.dodgeDirX * PLAYER.dodgeSpeed;

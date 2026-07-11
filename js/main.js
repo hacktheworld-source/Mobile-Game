@@ -5,6 +5,7 @@ import { Game } from "./game.js";
 import { initInput } from "./input.js";
 import { loadSave } from "./engine/save.js";
 import { ATTRIBUTES } from "./rpg/stats.js";
+import { ITEMS, SLOTS, SLOT_LABELS, SHOP_STOCK } from "./rpg/items.js";
 
 const canvas = document.getElementById("game");
 const root = document.getElementById("game-root");
@@ -32,6 +33,17 @@ const sheet = document.getElementById("sheet");
 const sheetPoints = document.getElementById("sheet-points");
 const sheetRows = document.getElementById("sheet-rows");
 const sheetClose = document.getElementById("sheet-close");
+const tabStats = document.getElementById("tab-stats");
+const tabGear = document.getElementById("tab-gear");
+const paneStats = document.getElementById("pane-stats");
+const paneGear = document.getElementById("pane-gear");
+const gearRows = document.getElementById("gear-rows");
+const menuBtn = document.getElementById("menu-btn");
+
+const shop = document.getElementById("shop");
+const shopGold = document.getElementById("shop-gold");
+const shopRows = document.getElementById("shop-rows");
+const shopClose = document.getElementById("shop-close");
 
 initInput(root);
 const game = new Game(canvas, hud);
@@ -122,9 +134,61 @@ function renderSheet() {
   }
 }
 
-function openSheet() {
+function renderGear() {
+  const p = game.player;
+  if (!p) return;
+  gearRows.innerHTML = "";
+  for (const slot of SLOTS) {
+    const label = document.createElement("div");
+    label.className = "gear-slot-label";
+    label.textContent = SLOT_LABELS[slot];
+    gearRows.appendChild(label);
+
+    const owned = p.inventory.filter((id) => ITEMS[id].slot === slot);
+    if (owned.length === 0) {
+      const row = document.createElement("div");
+      row.className = "gear-row";
+      row.innerHTML = `<div class="gear-info"><div class="gear-desc">Nothing yet — check the shop, or crack open a chest.</div></div>`;
+      gearRows.appendChild(row);
+      continue;
+    }
+    for (const id of owned) {
+      const it = ITEMS[id];
+      const equipped = p.equipment[slot] === id;
+      const row = document.createElement("div");
+      row.className = "gear-row";
+      row.innerHTML =
+        `<div class="gear-info"><div class="gear-name">${it.name}` +
+        (equipped ? `<span class="equipped-tag">EQUIPPED</span>` : "") +
+        `</div><div class="gear-desc">${it.desc}</div></div>`;
+      const btn = document.createElement("button");
+      btn.className = "gear-btn";
+      btn.textContent = equipped ? "WORN" : "EQUIP";
+      btn.disabled = equipped;
+      btn.addEventListener("click", () => {
+        if (game.equipItem(id)) renderGear();
+      });
+      row.appendChild(btn);
+      gearRows.appendChild(row);
+    }
+  }
+}
+
+function setTab(which) {
+  tabStats.classList.toggle("active", which === "stats");
+  tabGear.classList.toggle("active", which === "gear");
+  paneStats.classList.toggle("hidden", which !== "stats");
+  paneGear.classList.toggle("hidden", which !== "gear");
+  if (which === "stats") renderSheet();
+  else renderGear();
+}
+
+tabStats.addEventListener("click", () => setTab("stats"));
+tabGear.addEventListener("click", () => setTab("gear"));
+
+function openSheet(tab = "stats") {
   if (!game.openSheet()) return;
-  renderSheet();
+  setTab(tab);
   sheet.classList.remove("hidden");
 }
 
@@ -133,8 +197,47 @@ function closeSheet() {
   game.closeSheet();
 }
 
-hud.levelupBtn.addEventListener("click", openSheet);
+hud.levelupBtn.addEventListener("click", () => openSheet("stats"));
+menuBtn.addEventListener("click", () => openSheet("gear"));
 sheetClose.addEventListener("click", closeSheet);
+
+// ---------- shop ----------
+
+function renderShop() {
+  const p = game.player;
+  if (!p) return;
+  shopGold.textContent = `You carry ${p.gold} gold`;
+  shopGold.classList.add("has-points");
+  shopRows.innerHTML = "";
+  for (const id of SHOP_STOCK) {
+    const it = ITEMS[id];
+    const owned = p.ownsItem(id);
+    const row = document.createElement("div");
+    row.className = "gear-row";
+    row.innerHTML =
+      `<div class="gear-info"><div class="gear-name">${it.name}</div>` +
+      `<div class="gear-desc">${SLOT_LABELS[it.slot]} · ${it.desc}</div></div>`;
+    const btn = document.createElement("button");
+    btn.className = "gear-btn price";
+    btn.textContent = owned ? "OWNED" : `${it.price}g`;
+    btn.disabled = owned || p.gold < it.price;
+    btn.addEventListener("click", () => {
+      if (game.buyItem(id)) renderShop();
+    });
+    row.appendChild(btn);
+    shopRows.appendChild(row);
+  }
+}
+
+game.onShopOpen = () => {
+  renderShop();
+  shop.classList.remove("hidden");
+};
+
+shopClose.addEventListener("click", () => {
+  shop.classList.add("hidden");
+  game.closeShop();
+});
 
 // Weapon mode switching: tap the mode button (or Q / 1 / 2 / 3 on desktop).
 hud.modeBtn.addEventListener(
