@@ -1,0 +1,153 @@
+// Enemy archetype definitions. Behavior lives in entities.js; these are the
+// tuning knobs. contactDamage is in half-hearts. Screen `tier` scales
+// maxHealth, xp and gold (see TIER_SCALE).
+
+export const TIER_SCALE = {
+  hp: (tier) => 1 + 0.35 * (tier - 1),
+  xp: (tier) => 1 + 0.5 * (tier - 1),
+  gold: (tier) => 1 + 0.45 * (tier - 1),
+};
+
+export const ENEMY_TYPES = {
+  // Walks straight at you. The baseline threat.
+  chaser: {
+    label: "Husk",
+    radius: 15,
+    speed: 92,
+    maxHealth: 100,
+    contactDamage: 1,
+    hitInterval: 0.55,
+    knockback: 260,
+    xp: 12,
+    goldMin: 4,
+    goldMax: 9,
+    heartDropChance: 0.15,
+    color: "#ff5470",
+  },
+  // Slow stalker that winds up (clear tell), then rushes in a locked line.
+  charger: {
+    label: "Bone Charger",
+    radius: 17,
+    speed: 55,
+    maxHealth: 140,
+    contactDamage: 1,
+    chargeDamage: 2,
+    hitInterval: 0.6,
+    knockback: 170,
+    xp: 18,
+    goldMin: 7,
+    goldMax: 13,
+    heartDropChance: 0.2,
+    color: "#ff9a3d",
+    triggerRange: 170,
+    windupTime: 0.55,
+    chargeSpeed: 430,
+    chargeTime: 0.5,
+    recoverTime: 1.4,
+  },
+  // Keeps its distance and fires telegraphed arrows you can roll through.
+  archer: {
+    label: "Barrow Archer",
+    radius: 13,
+    speed: 78,
+    maxHealth: 70,
+    contactDamage: 1,
+    hitInterval: 0.6,
+    knockback: 300,
+    xp: 16,
+    goldMin: 6,
+    goldMax: 11,
+    heartDropChance: 0.15,
+    color: "#b06df5",
+    shootRange: 250,
+    fleeRange: 120,
+    drawTime: 0.45,
+    shootCooldown: 1.9,
+    arrowSpeed: 250,
+    arrowDamage: 1,
+  },
+  // Lobs bombs at your feet: a growing ring marks the blast. Move.
+  bomber: {
+    label: "Grave Bomber",
+    radius: 14,
+    speed: 64,
+    maxHealth: 90,
+    contactDamage: 1,
+    hitInterval: 0.6,
+    knockback: 280,
+    xp: 20,
+    goldMin: 8,
+    goldMax: 14,
+    heartDropChance: 0.18,
+    color: "#3dbfa5",
+    throwRange: 240,
+    fleeRange: 110,
+    bombCooldown: 2.6,
+    bombFuse: 0.9,
+    bombRadius: 44,
+    bombDamage: 2,
+  },
+  // Fades out, reappears near you with a shimmer, then lunges. Untouchable
+  // while faded — wait for the materialize tell.
+  wraith: {
+    label: "Wraith",
+    radius: 14,
+    speed: 70,
+    maxHealth: 80,
+    contactDamage: 1,
+    hitInterval: 0.55,
+    knockback: 240,
+    xp: 22,
+    goldMin: 9,
+    goldMax: 15,
+    heartDropChance: 0.15,
+    color: "#9db8d9",
+    fadeCooldown: 2.6, // time visible before fading again
+    fadeTime: 0.8, // how long it stays gone
+    materializeTime: 0.4, // shimmer tell after reappearing
+    blinkRange: 95, // reappears about this far from the player
+    lungeSpeed: 200,
+    lungeTime: 1.1,
+  },
+  // Raises a shield: frontal hits clank off. Flank it — or burn it.
+  knight: {
+    label: "Bone Knight",
+    radius: 17,
+    speed: 60,
+    maxHealth: 160,
+    contactDamage: 1,
+    hitInterval: 0.6,
+    knockback: 120,
+    xp: 26,
+    goldMin: 11,
+    goldMax: 18,
+    heartDropChance: 0.2,
+    color: "#aab3c8",
+    blockArc: Math.PI * 0.56, // ~100° frontal block cone
+  },
+  // The Barrow King. Slams, summons, and (below half health) charges.
+  boss_barrow_king: {
+    label: "The Barrow King",
+    boss: true,
+    radius: 26,
+    speed: 46,
+    maxHealth: 600,
+    contactDamage: 2,
+    hitInterval: 0.7,
+    knockback: 40,
+    xp: 150,
+    goldMin: 180,
+    goldMax: 220,
+    heartDropChance: 0,
+    color: "#7a4dd6",
+    slamCooldown: 4.2,
+    slamTelegraph: 0.8,
+    slamRadius: 92,
+    slamDamage: 2,
+    summonCooldown: 8,
+    summonCap: 2,
+    chargeSpeed: 360,
+    chargeTime: 0.6,
+    windupTime: 0.6,
+  },
+};

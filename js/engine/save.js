@@ -2,7 +2,8 @@
 // coordinate space, so it's resolution-independent.
 //
 // v1: pre-RPG (numeric 0-100 health). v2: hearts, attributes, XP, gold, pouch.
-// v3: inventory, equipment, world flags (opened chests etc).
+// v3: inventory, equipment, world flags. v4: perks, active skill, bonus
+// hearts (and the world regrew: positions from older saves are re-homed).
 // Old saves are migrated forward on load.
 
 import { STARTING_EQUIPMENT, STARTING_INVENTORY } from "../rpg/items.js";
@@ -49,7 +50,22 @@ function migrate(data) {
       flags: {},
     };
   }
-  if (data.v === 3) return data;
+  if (data.v === 3) {
+    data = {
+      ...data,
+      v: 4,
+      perks: [],
+      activeSkill: null,
+      bonusHearts: 0,
+    };
+    // The world was rebuilt (new screen grid): re-home older saves so they
+    // never load into a screen id that now means somewhere else.
+    data.screenId = "2,1";
+    data.x = 176;
+    data.y = 240;
+    data.pouch = null;
+  }
+  if (data.v === 4) return data;
   return null;
 }
 

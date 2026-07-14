@@ -1,89 +1,88 @@
-# Emberfall — mobile action-RPG
+# EMBERFALL: The Hollow Crown
 
-A **dark-fantasy action-RPG** ("small Skyrim") for the mobile browser (no app
-store, no install). You explore a fixed, persistent, Zelda-style world of
-screens — fight, travel, die, and wake back up at the hearth. Pure HTML5
-Canvas + vanilla JS — **zero build step**, so it runs straight off GitHub Pages.
+A **dark-fantasy action-RPG** for the mobile browser — no app store, no
+install, no build step. A 20-screen handcrafted overworld, a six-room dungeon
+with a key, a locked gate and a boss, three weapon pillars (sword / bow /
+fire), perks with active skills, gear, a shop, an NPC quest line, and a world
+that permanently remembers what you've done. Pure HTML5 Canvas + vanilla JS,
+served straight from GitHub Pages, autosaving to your device.
 
-See [`docs/GAME_PLAN.md`](docs/GAME_PLAN.md) for the full vision and phased
-roadmap. **Done so far:** a hand-authored 3×3 overworld with a safe home town,
-screen-flip travel, tile collision, autosave (Phase 1); hearts, four
-attributes with freeform point spending, XP levels, gold drops, and a
-recoverable death pouch (Phase 2).
+**The full design bible lives in [`docs/GDD.md`](docs/GDD.md).**
+(The original phased plan, [`docs/GAME_PLAN.md`](docs/GAME_PLAN.md), is kept
+for history.)
 
 ## Controls
 
 **Touch (phone)**
-- **Left thumb** — floating virtual joystick (touch anywhere on the left side to move)
-- **ATK** button — use the equipped weapon (sword swing / bow shot / firebolt)
-- **SWORD/BOW/FIRE** button — cycle weapon modes; the bow scales with Finesse,
-  the firebolt with Focus (costs mana, which regenerates)
-- **DODGE** button — dodge roll: a quick burst with brief invincibility
-  (you can roll through enemy arrows)
+- **Left thumb** — floating virtual joystick (touch anywhere on the left side)
+- **ATK** — use the equipped weapon (sword swing / bow shot / firebolt)
+- **SWORD/BOW/FIRE** — cycle weapon modes (bow scales with Finesse, fire with
+  Focus and costs regenerating mana)
+- **SKILL** — your equipped active perk (Whirlwind / Volley / Flame Nova);
+  appears once you own one
+- **DODGE** — roll with i-frames (yes, through enemy arrows)
+- **☰** — character sheet: STATS · PERKS · GEAR · MAP  · **♪** — sound toggle
 
 **Desktop (for testing)**
-- **WASD / arrows** — move
-- **J / Space** — attack · **K / Shift** — dodge
+- **WASD/arrows** move · **J/Space** attack · **K/Shift** dodge · **L** skill
 - **Q** cycle weapon · **1/2/3** pick weapon · **C** character sheet
 
-You face the direction you're moving; the swing lands in front of you. Walk
-off a screen's edge (through gaps in the walls) to travel to the next screen.
-The game autosaves; dying returns you to the hearth in Emberfall town.
+## The game
+
+- Start at the hearth in **Emberfall** town: the merchant stall and Elder
+  Maren (talk to her — she has a job for you).
+- The world is a 5×4 grid of screens; walk off an edge to travel. Danger
+  **tiers up** with distance from town (tougher enemies, better rewards).
+- Enemies telegraph everything: chargers flash before rushing, archers show
+  aim lines, bombers mark their blast, wraiths shimmer before striking, and
+  Bone Knights block frontal hits (flank them — or set them on fire).
+- Level up → spend points on **attributes** (1pt) or **perks** (2pts).
+  Actives go on your SKILL button. Buy gear at the shop; find better in chests.
+- Death drops your carried gold in a pouch where you fell. Corpse-run to
+  reclaim it. Everything else is never lost — the game autosaves constantly.
+- **Chapter 1:** find the Barrow Gate, take the key from the dead, open the
+  sealed gate, and put the **Barrow King** back to sleep.
 
 ## Run it locally
 
-Because it uses ES modules, open it via a local server (not `file://`):
-
 ```bash
-# from the repo root
+# from the repo root (ES modules need a server, not file://)
 python3 -m http.server 8000
-# then visit http://localhost:8000 on your phone (same Wi‑Fi) or desktop
 ```
 
-## Play it on your phone (GitHub Pages)
-
-1. Merge this branch into your default branch (e.g. `main`).
-2. In the repo: **Settings → Pages**.
-3. Set **Source** to **GitHub Actions** (the included workflow deploys the site).
-4. After the workflow runs, open the published URL on your phone.
-
-> Prefer no workflow? Under **Settings → Pages** you can instead choose
-> **Deploy from a branch**, pick your branch and the `/ (root)` folder. The
-> included `.nojekyll` file makes sure the `js/` and `css/` folders are served
-> as-is.
+Add `?debug` to the URL to expose the running game as `window.__game`.
 
 ## Project layout
 
 ```
-index.html            markup: canvas, HUD, touch buttons, overlays
-css/style.css         mobile-first layout + control styling
-js/main.js            entry, frame loop, title/death overlay flow
-js/input.js           floating joystick, action buttons, keyboard fallback
-js/entities.js        Player (move/attack/dodge) and Enemy (chaser)
-js/game.js            current screen, transitions, combat, autosave, rendering
-js/engine/tilemap.js  tile grid: collision + shape rendering, logical space
-js/engine/save.js     localStorage save/load (versioned, with migration)
-js/world/world.js     the screen graph (neighbors by direction)
-js/world/screens.js   DATA: hand-authored screens (tiles, spawns, safety)
-js/rpg/stats.js       attributes, per-point scaling, XP curve
-js/rpg/items.js       item catalog: weapons, armor, charms, shop stock
+index.html             canvas, HUD, panels (sheet/shop/dialogue), controls
+css/style.css          mobile-first UI styling
+js/main.js             boot, frame loop, panel wiring, audio unlock
+js/input.js            floating joystick, action buttons, keyboard
+js/entities.js         Player, Enemy archetypes + boss, Projectile, Bomb, Pickup
+js/game.js             the orchestrator: screen state, combat, doors, quests,
+                       autosave, rendering
+js/engine/tilemap.js   tile grid, themes, collision, fixed logical space
+js/engine/save.js      versioned localStorage saves (v1→v4 migration chain)
+js/engine/audio.js     synthesized WebAudio SFX (no asset files)
+js/engine/fx.js        screen shake, hit-stop, particles, damage numbers
+js/world/screens.js    DATA: the whole world; openings auto-punched from the
+                       graph, validated (shape + reachability) at load
+js/world/world.js      screen graph navigation
+js/world/dialogue.js   NPC dialogue + quest status lines
+js/rpg/stats.js        attributes, scaling, XP curve
+js/rpg/items.js        item catalog + shop stock
+js/rpg/perks.js        perks: actives (skills) + passives
+js/rpg/enemies.js      enemy archetype definitions + tier scaling
 ```
 
-The game runs in a fixed logical space (12×20 tiles of 32px) scaled to fit any
-phone; save data is resolution-independent. World content is authored as
-character-grid data in `js/world/screens.js` — doorways sit at columns 5–6
-(vertical) and rows 9–10 (horizontal) so neighboring screens always align, and
-the module self-validates at load.
+World content is pure data: screens are character grids (`. # ~ t - m`) with
+enemies, chests, doors, and NPCs declared alongside. Doorway openings are
+punched automatically from the world graph — misaligned exits are impossible —
+and a load-time validator flood-fills every screen to prove every chest, door,
+NPC and spawn is reachable.
 
-Add `?debug` to the URL to expose the running game as `window.__game` in the
-console. Gameplay tuning lives in the `PLAYER` and `ENEMY` constant blocks in
-`js/entities.js`.
+## Deploying
 
-## Roadmap
-
-See [`docs/GAME_PLAN.md`](docs/GAME_PLAN.md) for the full 8-phase plan.
-**Done:** Phase 1 (world & movement), Phase 2 (hearts, attributes, XP, gold,
-death pouch), Phase 3 (bow + firebolt + mana, weapon switching, charger and
-archer enemies), Phase 4 (gear & inventory: 16 items in 5 slots, the
-Emberfall shop, persistent treasure chests, STATS/GEAR sheet tabs).
-**Next:** Phase 5 — skill trees and perks.
+GitHub Pages serves the repo root (see `.github/workflows/pages.yml`, or point
+Pages at this branch's root). `.nojekyll` keeps the `js/` folders intact.

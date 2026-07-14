@@ -11,6 +11,7 @@ export const Input = {
   // Edge-triggered action flags. The game consumes these and resets them.
   attackPressed: false,
   dodgePressed: false,
+  skillPressed: false,
 };
 
 // --- internal state ---
@@ -111,6 +112,7 @@ function releaseJoystick() {
 function setupButtons() {
   const attack = document.getElementById("btn-attack");
   const dodge = document.getElementById("btn-dodge");
+  const skill = document.getElementById("btn-skill");
 
   const bind = (el, fn) => {
     el.addEventListener(
@@ -130,6 +132,7 @@ function setupButtons() {
 
   bind(attack, () => (Input.attackPressed = true));
   bind(dodge, () => (Input.dodgePressed = true));
+  if (skill) bind(skill, () => (Input.skillPressed = true));
 }
 
 function setupKeyboard() {
@@ -139,6 +142,7 @@ function setupKeyboard() {
     keys.add(k);
     if (k === "j" || k === " ") Input.attackPressed = true;
     if (k === "k" || k === "shift") Input.dodgePressed = true;
+    if (k === "l") Input.skillPressed = true;
     updateKeyboardVector();
   });
 
@@ -170,4 +174,5 @@ function updateKeyboardVector() {
 export function consumeActions() {
   Input.attackPressed = false;
   Input.dodgePressed = false;
+  Input.skillPressed = false;
 }

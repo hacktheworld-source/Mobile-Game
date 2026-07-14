@@ -1,12 +1,8 @@
-// The world graph: screens keyed by "x,y" grid coordinates. Walking off a
-// screen edge moves you to the neighbor in that direction (screen-flip).
+// The world graph: overworld screens keyed by "x,y" (grid adjacency) and
+// dungeon rooms keyed by "dN" (explicit exits). Doorway punching and
+// validation happen in screens.js at load.
 
-export const DIRS = {
-  left: [-1, 0],
-  right: [1, 0],
-  top: [0, -1],
-  bottom: [0, 1],
-};
+import { neighborOf } from "./screens.js";
 
 export class World {
   constructor(screens) {
@@ -19,10 +15,6 @@ export class World {
   }
 
   neighborId(dir) {
-    const d = DIRS[dir];
-    if (!d || !this.currentId) return null;
-    const [x, y] = this.currentId.split(",").map(Number);
-    const nid = `${x + d[0]},${y + d[1]}`;
-    return this.screens[nid] ? nid : null;
+    return this.currentId ? neighborOf(this.currentId, dir) : null;
   }
 }

@@ -9,7 +9,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="mobile-web-app-capable" content="yes" />
   <meta name="theme-color" content="#0e1016" />
-  <title>Emberfall</title>
+  <title>Emberfall: The Hollow Crown</title>
   <link rel="icon" href="data:," />
   <link rel="stylesheet" href="css/style.css" />
 </head>
@@ -31,6 +31,7 @@
     </div>
     <button id="levelup-btn" class="hidden">LEVEL UP ＋3</button>
     <button id="menu-btn" aria-label="Character &amp; gear">☰</button>
+    <button id="audio-btn" aria-label="Toggle sound">♪</button>
 
     <!-- Character sheet (pauses the game) -->
     <div id="sheet" class="overlay hidden">
@@ -38,14 +39,24 @@
         <h2>CHARACTER</h2>
         <div class="sheet-tabs">
           <button id="tab-stats" class="sheet-tab active">STATS</button>
+          <button id="tab-perks" class="sheet-tab">PERKS</button>
           <button id="tab-gear" class="sheet-tab">GEAR</button>
+          <button id="tab-map" class="sheet-tab">MAP</button>
         </div>
         <div id="pane-stats">
           <div class="sheet-points" id="sheet-points"></div>
           <div id="sheet-rows"></div>
         </div>
+        <div id="pane-perks" class="hidden">
+          <div class="sheet-points" id="perk-points"></div>
+          <div id="perk-rows" class="sheet-scroll"></div>
+        </div>
         <div id="pane-gear" class="hidden">
           <div id="gear-rows" class="sheet-scroll"></div>
+        </div>
+        <div id="pane-map" class="hidden">
+          <div id="map-grid"></div>
+          <div id="quest-line"></div>
         </div>
         <button id="sheet-close" class="start-btn">RESUME</button>
       </div>
@@ -61,6 +72,13 @@
       </div>
     </div>
 
+    <!-- Dialogue (tap to advance) -->
+    <div id="dialogue" class="hidden">
+      <div id="dialogue-name"></div>
+      <div id="dialogue-text"></div>
+      <div id="dialogue-hint">tap to continue</div>
+    </div>
+
     <!-- Touch controls (hidden on devices with no touch) -->
     <div id="controls">
       <!-- The joystick base/knob get positioned dynamically -->
@@ -69,6 +87,7 @@
       </div>
       <div id="buttons">
         <button id="btn-mode" class="action-btn mode" aria-label="Switch weapon">SWORD</button>
+        <button id="btn-skill" class="action-btn skill hidden" aria-label="Skill">SKILL</button>
         <button id="btn-dodge" class="action-btn dodge" aria-label="Dodge">DODGE</button>
         <button id="btn-attack" class="action-btn attack" aria-label="Attack">ATK</button>
       </div>

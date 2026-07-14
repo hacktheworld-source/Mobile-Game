@@ -1,9 +1,10 @@
 # Game Plan — "Untitled Dark-Fantasy Action-RPG"
 
-> **Working codename:** *Emberfall* (rename anytime).
-> This is the living design + roadmap doc. It captures the vision we agreed on
-> and the phased build order. Specifics marked _(proposed)_ are sensible
-> defaults meant to be tuned, not commitments.
+> ⚠️ **SUPERSEDED.** This document guided Phases 1–4 and is kept for history.
+> The authoritative design document is now [`GDD.md`](GDD.md) —
+> **EMBERFALL: The Hollow Crown** — which absorbed everything here and
+> describes the full game (world, dungeon, perks, quest, juice) that shipped
+> in the v0.5 overhaul.
 
 ---
 

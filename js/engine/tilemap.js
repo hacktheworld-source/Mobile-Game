@@ -15,6 +15,7 @@ export const TILE = {
   WATER: 2,
   TREE: 3,
   PATH: 4,
+  MUD: 5,
 };
 
 // Character map used by hand-authored screen data.
@@ -24,24 +25,51 @@ const CHAR_TILE = {
   "~": TILE.WATER,
   t: TILE.TREE,
   "-": TILE.PATH,
+  m: TILE.MUD,
 };
 
 const BLOCKING = new Set([TILE.WALL, TILE.WATER, TILE.TREE]);
 // Projectiles fly over water but are stopped by walls and trees.
 const PROJ_BLOCKING = new Set([TILE.WALL, TILE.TREE]);
 
-// Shade variants per tile type, picked deterministically per-tile so the
-// ground doesn't look flat. (Shapes-now: sprites drop in here later.)
-const SHADES = {
-  [TILE.GRASS]: ["#17231d", "#192620", "#15211b"],
-  [TILE.PATH]: ["#2b2820", "#2e2b23", "#292620"],
-  [TILE.WALL]: ["#2b3247", "#2d3550", "#293043"],
-  [TILE.WATER]: ["#10233a", "#0f2136", "#11253e"],
-  [TILE.TREE]: ["#17231d", "#192620", "#15211b"], // grass base under canopy
+// Shade variants per tile type per THEME, picked deterministically per-tile
+// so the ground doesn't look flat. (Shapes-now: sprites drop in here later.)
+const THEMES = {
+  overworld: {
+    [TILE.GRASS]: ["#17231d", "#192620", "#15211b"],
+    [TILE.PATH]: ["#2b2820", "#2e2b23", "#292620"],
+    [TILE.WALL]: ["#2b3247", "#2d3550", "#293043"],
+    [TILE.WATER]: ["#10233a", "#0f2136", "#11253e"],
+    [TILE.TREE]: ["#17231d", "#192620", "#15211b"],
+    [TILE.MUD]: ["#241f16", "#272219", "#221d14"],
+    canopy: "#1f3a28",
+    canopyRim: "#142a1b",
+  },
+  marsh: {
+    [TILE.GRASS]: ["#1a231a", "#1c261c", "#182118"],
+    [TILE.PATH]: ["#282417", "#2b271a", "#252115"],
+    [TILE.WALL]: ["#2b3140", "#2d3444", "#28303d"],
+    [TILE.WATER]: ["#14282e", "#122529", "#152b31"],
+    [TILE.TREE]: ["#1a231a", "#1c261c", "#182118"],
+    [TILE.MUD]: ["#2a2318", "#2d261b", "#272015"],
+    canopy: "#2a3d24",
+    canopyRim: "#1b2a17",
+  },
+  barrow: {
+    [TILE.GRASS]: ["#1c1a24", "#1e1c27", "#191721"], // dead stone floor
+    [TILE.PATH]: ["#262133", "#282336", "#231f2f"],
+    [TILE.WALL]: ["#3a3450", "#3d3755", "#37314b"],
+    [TILE.WATER]: ["#141327", "#121125", "#16152b"],
+    [TILE.TREE]: ["#1c1a24", "#1e1c27", "#191721"], // "tree" = broken pillar
+    [TILE.MUD]: ["#211d29", "#241f2d", "#1f1b26"],
+    canopy: "#453d5e",
+    canopyRim: "#2d2740",
+  },
 };
 
 export class TileMap {
-  constructor(rows) {
+  constructor(rows, theme = "overworld") {
+    this.theme = THEMES[theme] ? theme : "overworld";
     if (rows.length !== GRID_H) {
       throw new Error(`TileMap: expected ${GRID_H} rows, got ${rows.length}`);
     }
@@ -114,13 +142,14 @@ export class TileMap {
 
   draw(ctx) {
     const ts = TILE_SIZE;
+    const shades = THEMES[this.theme];
+    const barrow = this.theme === "barrow";
     for (let ty = 0; ty < GRID_H; ty++) {
       for (let tx = 0; tx < GRID_W; tx++) {
         const t = this.tiles[ty * GRID_W + tx];
         const px = tx * ts;
         const py = ty * ts;
-        const shade = SHADES[t][(tx * 7 + ty * 13) % 3];
-        ctx.fillStyle = shade;
+        ctx.fillStyle = shades[t][(tx * 7 + ty * 13) % 3];
         ctx.fillRect(px, py, ts, ts);
 
         if (t === TILE.WALL) {
@@ -134,13 +163,26 @@ export class TileMap {
           ctx.fillRect(px + 4, py + 8, ts - 8, 2);
           ctx.fillRect(px + 8, py + 21, ts - 14, 2);
         } else if (t === TILE.TREE) {
-          ctx.fillStyle = "#1f3a28";
-          ctx.beginPath();
-          ctx.arc(px + ts / 2, py + ts / 2, 13, 0, Math.PI * 2);
-          ctx.fill();
-          ctx.strokeStyle = "#142a1b";
-          ctx.lineWidth = 2;
-          ctx.stroke();
+          if (barrow) {
+            // Broken pillar instead of a tree.
+            ctx.fillStyle = shades.canopy;
+            ctx.fillRect(px + 7, py + 5, ts - 14, ts - 10);
+            ctx.strokeStyle = shades.canopyRim;
+            ctx.lineWidth = 2;
+            ctx.strokeRect(px + 7, py + 5, ts - 14, ts - 10);
+          } else {
+            ctx.fillStyle = shades.canopy;
+            ctx.beginPath();
+            ctx.arc(px + ts / 2, py + ts / 2, 13, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.strokeStyle = shades.canopyRim;
+            ctx.lineWidth = 2;
+            ctx.stroke();
+          }
+        } else if (t === TILE.MUD) {
+          ctx.fillStyle = "rgba(0,0,0,0.16)";
+          ctx.fillRect(px + 5, py + 9, 7, 3);
+          ctx.fillRect(px + 17, py + 20, 8, 3);
         }
       }
     }

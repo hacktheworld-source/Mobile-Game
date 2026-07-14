@@ -175,6 +175,130 @@ canvas#game {
   cursor: pointer;
 }
 
+#audio-btn {
+  position: absolute;
+  top: calc(env(safe-area-inset-top, 0px) + 14px);
+  left: calc(env(safe-area-inset-left, 0px) + 62px);
+  z-index: 6;
+  width: 42px;
+  height: 42px;
+  font-size: 17px;
+  color: var(--ink);
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 12px;
+  pointer-events: auto;
+  cursor: pointer;
+}
+
+#audio-btn.muted {
+  color: rgba(255, 255, 255, 0.3);
+  text-decoration: line-through;
+}
+
+/* ---------- Dialogue ---------- */
+#dialogue {
+  position: absolute;
+  left: 50%;
+  bottom: calc(env(safe-area-inset-bottom, 0px) + 180px);
+  transform: translateX(-50%);
+  width: min(92vw, 360px);
+  background: rgba(14, 16, 22, 0.94);
+  border: 1px solid rgba(232, 176, 77, 0.4);
+  border-radius: 14px;
+  padding: 14px 16px;
+  z-index: 9;
+  pointer-events: auto;
+  cursor: pointer;
+}
+
+#dialogue.hidden {
+  display: none;
+}
+
+#dialogue-name {
+  color: #e8b04d;
+  font-weight: 800;
+  font-size: 12px;
+  letter-spacing: 1px;
+  margin-bottom: 5px;
+}
+
+#dialogue-text {
+  color: var(--ink);
+  font-size: 15px;
+  line-height: 1.45;
+}
+
+#dialogue-hint {
+  margin-top: 8px;
+  color: var(--muted);
+  font-size: 10px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  text-align: right;
+}
+
+/* ---------- World map tab ---------- */
+#map-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 4px;
+  margin: 8px 0 12px;
+}
+
+.map-cell {
+  aspect-ratio: 1;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 9px;
+  font-weight: 700;
+  color: var(--muted);
+  text-align: center;
+  padding: 2px;
+  overflow: hidden;
+}
+
+.map-cell.seen {
+  background: rgba(77, 214, 161, 0.12);
+  border-color: rgba(77, 214, 161, 0.3);
+  color: var(--ink);
+}
+
+.map-cell.here {
+  background: var(--accent);
+  color: #0e1016;
+  border-color: var(--accent);
+}
+
+.map-dungeon {
+  margin-top: 2px;
+  font-size: 12px;
+  color: var(--muted);
+  text-align: left;
+}
+
+.map-dungeon .seen-tag {
+  color: #b08df0;
+  font-weight: 800;
+}
+
+#quest-line {
+  margin-top: 10px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: rgba(232, 176, 77, 0.08);
+  border: 1px solid rgba(232, 176, 77, 0.25);
+  color: #e8ce9e;
+  font-size: 13px;
+  line-height: 1.4;
+  text-align: left;
+}
+
 /* ---------- Sheet tabs / gear & shop rows ---------- */
 .sheet-tabs {
   display: flex;
@@ -184,7 +308,7 @@ canvas#game {
 }
 
 .sheet-tab {
-  padding: 8px 22px;
+  padding: 8px 13px;
   font-size: 13px;
   font-weight: 800;
   letter-spacing: 1px;
@@ -403,6 +527,23 @@ canvas#game {
   position: absolute;
   right: 67px;
   bottom: 112px;
+}
+
+/* SKILL sits left of the arc, mirroring the mode button. */
+.action-btn.skill {
+  position: absolute;
+  right: 158px;
+  bottom: 56px;
+  width: 58px;
+  height: 58px;
+  font-size: 10px;
+  background: radial-gradient(circle at 35% 30%, #cba9f5, #8a5cf0);
+  box-shadow: 0 6px 18px rgba(138, 92, 240, 0.35);
+  color: #0e1016;
+}
+
+.action-btn.skill.hidden {
+  display: none;
 }
 
 .action-btn {
