@@ -293,11 +293,20 @@ export class Game {
     this.whirlTimer = Math.max(0, this.whirlTimer - dt);
 
     // --- input ---
-    if (Input.attackPressed) {
+    // Holding ATK autofires as fast as cooldowns allow. Dragging off the
+    // button aims manually (exact direction, no aim assist) and points the
+    // player, so you can strafe with the left thumb while attacking another way.
+    if (Input.attackHeld || Input.attackPressed) {
+      let angle;
+      if (Input.aimActive) {
+        angle = Math.atan2(Input.aimY, Input.aimX);
+        p.facing = angle;
+      } else {
+        angle = this.autoAimAngle();
+      }
       if (p.mode === "sword") {
         if (p.tryAttack()) sfx.swing();
       } else {
-        const angle = this.autoAimAngle();
         const shot = p.mode === "bow" ? p.tryShoot(angle) : p.tryCast(angle);
         if (shot) {
           this.projectiles.push(new Projectile(shot));
@@ -305,7 +314,13 @@ export class Game {
         }
       }
     }
-    if (Input.dodgePressed && p.tryDodge(Input.moveX, Input.moveY)) sfx.dodge();
+    // Dodge: a released right-side drag carries its own direction; the
+    // keyboard falls back to movement/facing.
+    if (Input.dodgePressed) {
+      const dx = Input.dodgeDirActive ? Input.dodgeDirX : Input.moveX;
+      const dy = Input.dodgeDirActive ? Input.dodgeDirY : Input.moveY;
+      if (p.tryDodge(dx, dy)) sfx.dodge();
+    }
     if (Input.skillPressed) {
       const skill = p.trySkill();
       if (skill) this.executeSkill(skill);
@@ -862,7 +877,6 @@ export class Game {
           ? p.shootCd > 0
           : p.castCd > 0 || p.mana < PLAYER.spellCost;
     this.hud.attackBtn.classList.toggle("cooling", atkCooling);
-    this.hud.dodgeBtn.classList.toggle("cooling", p.dodgeCd > 0);
 
     if (this.onHudChange) this.onHudChange();
   }
@@ -1153,6 +1167,44 @@ export class Game {
   renderPlayer(ctx) {
     const p = this.player;
     if (!p) return;
+
+    // Dodge drag: a line extends from the player in the drag direction;
+    // release to dash. Dimmed while the dodge is on cooldown.
+    if (Input.dodgeDragging && this.state === "playing") {
+      const ready = p.dodgeCd <= 0;
+      const len = 54;
+      const ex = p.x + Input.dodgeDragX * len;
+      const ey = p.y + Input.dodgeDragY * len;
+      ctx.save();
+      ctx.globalAlpha = ready ? 0.85 : 0.3;
+      ctx.strokeStyle = COLORS.playerDodge;
+      ctx.lineWidth = 3;
+      ctx.setLineDash([7, 5]);
+      ctx.beginPath();
+      ctx.moveTo(p.x + Input.dodgeDragX * (p.radius + 4), p.y + Input.dodgeDragY * (p.radius + 4));
+      ctx.lineTo(ex, ey);
+      ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.fillStyle = COLORS.playerDodge;
+      ctx.beginPath();
+      ctx.arc(ex, ey, 4, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+    }
+
+    // Attack drag: a thin aim line in the manually-aimed direction.
+    if (Input.aimActive && this.state === "playing") {
+      const aimColors = { sword: "#ff6b6b", bow: "#e8ecf5", spell: "#ffb35c" };
+      ctx.save();
+      ctx.globalAlpha = 0.45;
+      ctx.strokeStyle = aimColors[p.mode];
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(p.x + Input.aimX * (p.radius + 4), p.y + Input.aimY * (p.radius + 4));
+      ctx.lineTo(p.x + Input.aimX * 64, p.y + Input.aimY * 64);
+      ctx.stroke();
+      ctx.restore();
+    }
 
     if (p.isAttacking) {
       const t = p.attackTimer / PLAYER.attackDuration;

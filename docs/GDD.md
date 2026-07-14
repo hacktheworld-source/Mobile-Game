@@ -110,11 +110,18 @@ water-walking, spell slots) that double as exploration keys — Metroid-style.
 
 # 5. Combat
 
-## 5.1 Controls **[SHIPPED]**
+## 5.1 Controls **[SHIPPED]** — twin-stick by drags
 - **Left thumb:** floating virtual joystick (spawns where you touch).
-- **Right thumb:** ATK (uses equipped weapon) · DODGE (roll, i-frames) ·
-  weapon switcher (SWORD/BOW/FIRE) · **SKILL** (equipped active ability).
-- Desktop mirror: WASD · J attack · K dodge · L skill · Q/1/2/3 weapons · C sheet.
+- **ATK:** tap to strike · **hold to auto-attack** at cooldown speed ·
+  **drag off the button to aim** independently of movement (aim line shows
+  direction; manual aim overrides the soft auto-aim). Run-and-gun like
+  Exit the Gungeon.
+- **Dodge:** **swipe anywhere on the right half** (off-button): a dashed line
+  extends from the player in the drag direction; release to dash with
+  i-frames. Taps are ignored (no accidental dashes). No dodge button.
+- Also: weapon switcher (SWORD/BOW/FIRE) · **SKILL** (equipped active).
+- Desktop mirror: WASD · J attack (hold = auto) · K dodge · L skill ·
+  Q/1/2/3 weapons · C sheet.
 
 ## 5.2 The three pillars **[SHIPPED]**
 | Pillar | Feel | Resource | Scales with |

@@ -21,7 +21,6 @@ const hud = {
   xpFill: document.getElementById("xp-fill"),
   manaFill: document.getElementById("mana-fill"),
   attackBtn: document.getElementById("btn-attack"),
-  dodgeBtn: document.getElementById("btn-dodge"),
   modeBtn: document.getElementById("btn-mode"),
   skillBtn: document.getElementById("btn-skill"),
   levelupBtn: document.getElementById("levelup-btn"),
@@ -89,8 +88,8 @@ function showTitle() {
   overlayTitle.textContent = "EMBERFALL";
   overlayBody.innerHTML =
     "<b>THE HOLLOW CROWN</b><br>The last hearth still burns — and the barrow east of the " +
-    "fields has opened. Move with the left thumb. <b>ATK</b> strikes, <b>DODGE</b> rolls " +
-    "through danger, and who you become is up to you.";
+    "fields has opened. Move with the left thumb. Hold <b>ATK</b> to strike (drag it to " +
+    "aim); <b>swipe and release</b> anywhere on the right to dash. Who you become is up to you.";
   overlayHint.classList.remove("hidden");
   if (save) {
     btnPrimary.textContent = "CONTINUE";

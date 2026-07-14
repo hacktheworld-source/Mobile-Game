@@ -1,16 +1,37 @@
-// Input handling: floating virtual joystick + action buttons + keyboard fallback.
+// Input handling: floating move joystick (left), drag-to-dodge (right),
+// hold/drag-to-attack on the ATK button, plus a keyboard fallback.
 // Exposes a single `Input` object whose state the game reads each frame.
 
 const JOYSTICK_RADIUS = 55; // px of travel before the stick is "full tilt"
 const DEAD_ZONE = 0.16; // ignore tiny drifts
+const AIM_DEADZONE = 18; // px an ATK drag must travel before it aims
+const DODGE_MIN_DRAG = 28; // px a dodge drag must travel to fire on release
 
 export const Input = {
   // Movement vector, each component in [-1, 1]; magnitude clamped to 1.
   moveX: 0,
   moveY: 0,
-  // Edge-triggered action flags. The game consumes these and resets them.
+
+  // Attack: `attackPressed` is the edge (single tap / keypress);
+  // `attackHeld` autofires as fast as cooldowns allow.
   attackPressed: false,
+  attackHeld: false,
+  // Manual aim while dragging off the ATK button (normalized), else inactive.
+  aimActive: false,
+  aimX: 0,
+  aimY: 0,
+
+  // Dodge: fired on releasing a right-side drag (with its direction), or by
+  // keyboard (no direction -> game falls back to movement/facing).
   dodgePressed: false,
+  dodgeDirActive: false,
+  dodgeDirX: 0,
+  dodgeDirY: 0,
+  // Live drag state so the game can draw the aim line from the player.
+  dodgeDragging: false,
+  dodgeDragX: 0,
+  dodgeDragY: 0,
+
   skillPressed: false,
 };
 
@@ -18,6 +39,15 @@ export const Input = {
 let joystickTouchId = null;
 let joyOriginX = 0;
 let joyOriginY = 0;
+
+let dodgeTouchId = null;
+let dodgeStartX = 0;
+let dodgeStartY = 0;
+
+let atkTouchId = null;
+let atkStartX = 0;
+let atkStartY = 0;
+let atkMouseHeld = false;
 
 const keys = new Set();
 
@@ -31,25 +61,32 @@ export function initInput(root) {
   joystickEl = document.getElementById("joystick");
   knobEl = joystickEl.querySelector(".joystick-knob");
 
-  setupJoystick(root);
+  setupTouchZones(root);
   setupButtons();
   setupKeyboard();
 }
 
-// The left ~55% of the screen acts as the floating joystick zone. Touching
-// anywhere there drops the stick at that point and tracks the drag.
-function setupJoystick(root) {
+// Left ~55% of the screen: floating move joystick. The rest of the canvas:
+// drag-to-dodge (a swipe that shows an aim line and dashes on release).
+function setupTouchZones(root) {
   const canvas = document.getElementById("game");
 
   const start = (e) => {
     for (const t of e.changedTouches) {
-      if (joystickTouchId !== null) break;
-      if (t.clientX > window.innerWidth * 0.55) continue; // right side = buttons
-      joystickTouchId = t.identifier;
-      joyOriginX = t.clientX;
-      joyOriginY = t.clientY;
-      placeJoystick(t.clientX, t.clientY);
-      updateStick(t.clientX, t.clientY);
+      if (t.clientX <= window.innerWidth * 0.55) {
+        if (joystickTouchId !== null) continue;
+        joystickTouchId = t.identifier;
+        joyOriginX = t.clientX;
+        joyOriginY = t.clientY;
+        placeJoystick(t.clientX, t.clientY);
+        updateStick(t.clientX, t.clientY);
+      } else {
+        if (dodgeTouchId !== null) continue;
+        dodgeTouchId = t.identifier;
+        dodgeStartX = t.clientX;
+        dodgeStartY = t.clientY;
+        Input.dodgeDragging = false;
+      }
     }
   };
 
@@ -58,13 +95,39 @@ function setupJoystick(root) {
       if (t.identifier === joystickTouchId) {
         updateStick(t.clientX, t.clientY);
         e.preventDefault();
+      } else if (t.identifier === dodgeTouchId) {
+        const dx = t.clientX - dodgeStartX;
+        const dy = t.clientY - dodgeStartY;
+        const mag = Math.hypot(dx, dy);
+        if (mag > 10) {
+          Input.dodgeDragging = true;
+          Input.dodgeDragX = dx / mag;
+          Input.dodgeDragY = dy / mag;
+        } else {
+          Input.dodgeDragging = false;
+        }
+        e.preventDefault();
       }
     }
   };
 
   const end = (e) => {
     for (const t of e.changedTouches) {
-      if (t.identifier === joystickTouchId) releaseJoystick();
+      if (t.identifier === joystickTouchId) {
+        releaseJoystick();
+      } else if (t.identifier === dodgeTouchId) {
+        const dx = t.clientX - dodgeStartX;
+        const dy = t.clientY - dodgeStartY;
+        const mag = Math.hypot(dx, dy);
+        if (mag >= DODGE_MIN_DRAG) {
+          Input.dodgePressed = true;
+          Input.dodgeDirActive = true;
+          Input.dodgeDirX = dx / mag;
+          Input.dodgeDirY = dy / mag;
+        }
+        dodgeTouchId = null;
+        Input.dodgeDragging = false;
+      }
     }
   };
 
@@ -109,30 +172,99 @@ function releaseJoystick() {
   knobEl.style.transform = "translate(-50%, -50%)";
 }
 
+// Shared by touch drags and desktop mouse drags on the ATK button.
+function setAtkAim(dx, dy) {
+  const mag = Math.hypot(dx, dy);
+  if (mag > AIM_DEADZONE) {
+    Input.aimActive = true;
+    Input.aimX = dx / mag;
+    Input.aimY = dy / mag;
+  } else {
+    Input.aimActive = false;
+  }
+}
+
+function clearAtk() {
+  Input.attackHeld = false;
+  Input.aimActive = false;
+}
+
 function setupButtons() {
   const attack = document.getElementById("btn-attack");
-  const dodge = document.getElementById("btn-dodge");
   const skill = document.getElementById("btn-skill");
 
-  const bind = (el, fn) => {
-    el.addEventListener(
+  // ATK: tap = one attack; hold = autofire; drag off the button = aim.
+  attack.addEventListener(
+    "touchstart",
+    (e) => {
+      e.preventDefault();
+      const t = e.changedTouches[0];
+      atkTouchId = t.identifier;
+      atkStartX = t.clientX;
+      atkStartY = t.clientY;
+      Input.attackPressed = true;
+      Input.attackHeld = true;
+      Input.aimActive = false;
+    },
+    { passive: false }
+  );
+  document.addEventListener(
+    "touchmove",
+    (e) => {
+      for (const t of e.changedTouches) {
+        if (t.identifier === atkTouchId) {
+          setAtkAim(t.clientX - atkStartX, t.clientY - atkStartY);
+          e.preventDefault();
+        }
+      }
+    },
+    { passive: false }
+  );
+  const atkEnd = (e) => {
+    for (const t of e.changedTouches) {
+      if (t.identifier === atkTouchId) {
+        atkTouchId = null;
+        clearAtk();
+      }
+    }
+  };
+  document.addEventListener("touchend", atkEnd);
+  document.addEventListener("touchcancel", atkEnd);
+
+  // Desktop mouse on ATK mirrors the touch behavior.
+  attack.addEventListener("mousedown", (e) => {
+    e.preventDefault();
+    atkMouseHeld = true;
+    atkStartX = e.clientX;
+    atkStartY = e.clientY;
+    Input.attackPressed = true;
+    Input.attackHeld = true;
+  });
+  window.addEventListener("mousemove", (e) => {
+    if (atkMouseHeld) setAtkAim(e.clientX - atkStartX, e.clientY - atkStartY);
+  });
+  window.addEventListener("mouseup", () => {
+    if (atkMouseHeld) {
+      atkMouseHeld = false;
+      clearAtk();
+    }
+  });
+
+  // SKILL stays a simple tap.
+  if (skill) {
+    skill.addEventListener(
       "touchstart",
       (e) => {
         e.preventDefault();
-        fn();
+        Input.skillPressed = true;
       },
       { passive: false }
     );
-    // Mouse fallback for desktop testing.
-    el.addEventListener("mousedown", (e) => {
+    skill.addEventListener("mousedown", (e) => {
       e.preventDefault();
-      fn();
+      Input.skillPressed = true;
     });
-  };
-
-  bind(attack, () => (Input.attackPressed = true));
-  bind(dodge, () => (Input.dodgePressed = true));
-  if (skill) bind(skill, () => (Input.skillPressed = true));
+  }
 }
 
 function setupKeyboard() {
@@ -140,14 +272,23 @@ function setupKeyboard() {
     const k = e.key.toLowerCase();
     if (keys.has(k)) return; // ignore auto-repeat
     keys.add(k);
-    if (k === "j" || k === " ") Input.attackPressed = true;
+    if (k === "j" || k === " ") {
+      Input.attackPressed = true;
+      Input.attackHeld = true; // hold to autofire
+    }
     if (k === "k" || k === "shift") Input.dodgePressed = true;
     if (k === "l") Input.skillPressed = true;
     updateKeyboardVector();
   });
 
   window.addEventListener("keyup", (e) => {
-    keys.delete(e.key.toLowerCase());
+    const k = e.key.toLowerCase();
+    keys.delete(k);
+    if (k === "j" || k === " ") {
+      if (!keys.has("j") && !keys.has(" ") && atkTouchId === null && !atkMouseHeld) {
+        Input.attackHeld = false;
+      }
+    }
     updateKeyboardVector();
   });
 }
@@ -174,5 +315,6 @@ function updateKeyboardVector() {
 export function consumeActions() {
   Input.attackPressed = false;
   Input.dodgePressed = false;
+  Input.dodgeDirActive = false;
   Input.skillPressed = false;
 }

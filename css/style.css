@@ -529,13 +529,11 @@ canvas#game {
   bottom: 112px;
 }
 
-/* SKILL sits left of the arc, mirroring the mode button. */
+/* SKILL sits where DODGE used to live, beside ATK. */
 .action-btn.skill {
-  position: absolute;
-  right: 158px;
-  bottom: 56px;
-  width: 58px;
-  height: 58px;
+  width: 66px;
+  height: 66px;
+  margin-bottom: 14px;
   font-size: 10px;
   background: radial-gradient(circle at 35% 30%, #cba9f5, #8a5cf0);
   box-shadow: 0 6px 18px rgba(138, 92, 240, 0.35);
@@ -568,14 +566,6 @@ canvas#game {
   height: 92px;
   background: radial-gradient(circle at 35% 30%, #ff9a9a, var(--attack));
   box-shadow: 0 6px 18px rgba(255, 107, 107, 0.35);
-}
-
-.action-btn.dodge {
-  width: 72px;
-  height: 72px;
-  margin-bottom: 14px;
-  background: radial-gradient(circle at 35% 30%, #a7d0ff, var(--dodge));
-  box-shadow: 0 6px 18px rgba(90, 169, 255, 0.35);
 }
 
 .action-btn.mode {
