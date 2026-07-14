@@ -10,7 +10,8 @@ import { ENEMY_TYPES, TIER_SCALE } from "./rpg/enemies.js";
 import { PERKS } from "./rpg/perks.js";
 
 export const PLAYER = {
-  radius: 18,
+  // Slim enough (28px) to slip through one-tile (32px) gaps.
+  radius: 14,
   speed: 230,
   // Melee (base values — gear + attributes scale these; see derived getters)
   attackCooldown: 0.3,
