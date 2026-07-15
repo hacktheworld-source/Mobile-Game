@@ -271,7 +271,10 @@ export class Player {
     return true;
   }
 
-  update(dt, moveX, moveY, map) {
+  // aimAngle (radians or null): a manual attack-drag aim. While active it OWNS
+  // the facing — movement never overrides it, so you can strafe one way and
+  // swing/shoot another.
+  update(dt, moveX, moveY, map, aimAngle = null) {
     this.attackTimer = Math.max(0, this.attackTimer - dt);
     this.attackCd = Math.max(0, this.attackCd - dt);
     this.shootCd = Math.max(0, this.shootCd - dt);
@@ -288,7 +291,9 @@ export class Player {
     } else {
       this.vx = moveX * this.speed;
       this.vy = moveY * this.speed;
-      if (Math.hypot(moveX, moveY) > 0.1) {
+      if (aimAngle !== null) {
+        this.facing = aimAngle;
+      } else if (Math.hypot(moveX, moveY) > 0.1) {
         this.facing = Math.atan2(moveY, moveX);
       }
     }

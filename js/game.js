@@ -296,14 +296,10 @@ export class Game {
     // Holding ATK autofires as fast as cooldowns allow. Dragging off the
     // button aims manually (exact direction, no aim assist) and points the
     // player, so you can strafe with the left thumb while attacking another way.
+    const aimAngle = Input.aimActive ? Math.atan2(Input.aimY, Input.aimX) : null;
     if (Input.attackHeld || Input.attackPressed) {
-      let angle;
-      if (Input.aimActive) {
-        angle = Math.atan2(Input.aimY, Input.aimX);
-        p.facing = angle;
-      } else {
-        angle = this.autoAimAngle();
-      }
+      const angle = aimAngle !== null ? aimAngle : this.autoAimAngle();
+      if (aimAngle !== null) p.facing = aimAngle;
       if (p.mode === "sword") {
         if (p.tryAttack()) sfx.swing();
       } else {
@@ -327,7 +323,7 @@ export class Game {
     }
     consumeActions();
 
-    p.update(dt, Input.moveX, Input.moveY, this.map);
+    p.update(dt, Input.moveX, Input.moveY, this.map, aimAngle);
 
     // --- edge travel ---
     const exitDir = this.edgeExitDir();
