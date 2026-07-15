@@ -5,7 +5,13 @@
 const JOYSTICK_RADIUS = 55; // px of travel before the stick is "full tilt"
 const DEAD_ZONE = 0.16; // ignore tiny drifts
 const AIM_DEADZONE = 18; // px an ATK drag must travel before it aims
-const DODGE_MIN_DRAG = 28; // px a dodge drag must travel to fire on release
+
+// Dodge fires either on a slow-but-deliberate drag, OR a fast flick. A real
+// fast flick often covers FEWER pixels than a slow drag (touchend fires the
+// instant contact breaks), so it's judged by speed, not just distance.
+const DODGE_MIN_DRAG = 28; // px: fires regardless of speed once dragged this far
+const DODGE_FLICK_MIN_DRAG = 6; // px: minimum to have a direction at all
+const DODGE_FLICK_MAX_MS = 160; // a release within this long counts as "fast"
 
 export const Input = {
   // Movement vector, each component in [-1, 1]; magnitude clamped to 1.
@@ -43,6 +49,7 @@ let joyOriginY = 0;
 let dodgeTouchId = null;
 let dodgeStartX = 0;
 let dodgeStartY = 0;
+let dodgeStartTime = 0;
 
 let atkTouchId = null;
 let atkStartX = 0;
@@ -85,6 +92,7 @@ function setupTouchZones(root) {
         dodgeTouchId = t.identifier;
         dodgeStartX = t.clientX;
         dodgeStartY = t.clientY;
+        dodgeStartTime = performance.now();
         Input.dodgeDragging = false;
       }
     }
@@ -119,7 +127,9 @@ function setupTouchZones(root) {
         const dx = t.clientX - dodgeStartX;
         const dy = t.clientY - dodgeStartY;
         const mag = Math.hypot(dx, dy);
-        if (mag >= DODGE_MIN_DRAG) {
+        const elapsed = performance.now() - dodgeStartTime;
+        const isFastFlick = elapsed <= DODGE_FLICK_MAX_MS && mag >= DODGE_FLICK_MIN_DRAG;
+        if (mag >= DODGE_MIN_DRAG || isFastFlick) {
           Input.dodgePressed = true;
           Input.dodgeDirActive = true;
           Input.dodgeDirX = dx / mag;

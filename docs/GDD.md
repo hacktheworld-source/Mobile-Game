@@ -118,7 +118,10 @@ water-walking, spell slots) that double as exploration keys — Metroid-style.
   Exit the Gungeon.
 - **Dodge:** **swipe anywhere on the right half** (off-button): a dashed line
   extends from the player in the drag direction; release to dash with
-  i-frames. Taps are ignored (no accidental dashes). No dodge button.
+  i-frames. Speed-aware: a fast flick fires on very little travel (judged by
+  release time, not just distance — a real flick often covers FEWER pixels
+  than a slow drag since touchend fires the instant contact breaks); a slow
+  drag needs more distance. Plain taps are ignored. No dodge button.
 - Also: weapon switcher (SWORD/BOW/FIRE) · **SKILL** (equipped active).
 - Desktop mirror: WASD · J attack (hold = auto) · K dodge · L skill ·
   Q/1/2/3 weapons · C sheet.

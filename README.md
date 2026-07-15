@@ -20,7 +20,8 @@ for history.)
   firing direction)
 - **Dodge** — **swipe anywhere on the right side** (not on a button): a dashed
   line extends from the player in the drag direction; release to dash with
-  i-frames (yes, through enemy arrows). Short taps are ignored.
+  i-frames (yes, through enemy arrows). Fast flicks fire on very little
+  travel; slow drags need to cover more distance. Plain taps are ignored.
 - **SWORD/BOW/FIRE** — cycle weapon modes (bow scales with Finesse, fire with
   Focus and costs regenerating mana)
 - **SKILL** — your equipped active perk (Whirlwind / Volley / Flame Nova);
